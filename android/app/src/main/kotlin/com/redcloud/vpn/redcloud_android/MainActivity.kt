@@ -749,9 +749,9 @@ class MainActivity : FlutterActivity() {
                 continue
             }
 
-            // ۲. مهلت کافی به اَتر برای پویش گیت‌وی کلودفلر (تا ۱۵ ثانیه، چک هر ۵۰۰ میلی‌ثانیه)
+            // ۲. مهلت کافی به اَتر برای پویش گیت‌وی کلودفلر (تا ۴۵ ثانیه، چک هر ۵۰۰ میلی‌ثانیه)
             var portReady = false
-            for (attempt in 1..30) {
+            for (attempt in 1..90) {
                 Thread.sleep(500)
                 if (testSocksPort("Aether-Probe", port, 700)) {
                     portReady = true
@@ -845,20 +845,24 @@ class MainActivity : FlutterActivity() {
             try {
                 if (!targetDir.exists()) targetDir.mkdirs()
                 val files = assets.list("ATC/$currentAccount") ?: emptyArray()
-                for (fileName in files) {
-                    val destFile = File(targetDir, fileName)
-                    if (needNewAccount || !destFile.exists() || destFile.length() == 0L) {
-                        assets.open("ATC/$currentAccount/$fileName").use { input ->
-                            FileOutputStream(destFile).use { output -> input.copyTo(output) }
+                val dirsToDeploy = listOf(targetDir, filesDir).distinct()
+                for (dir in dirsToDeploy) {
+                    if (!dir.exists()) dir.mkdirs()
+                    for (fileName in files) {
+                        val destFile = File(dir, fileName)
+                        if (needNewAccount || !destFile.exists() || destFile.length() == 0L) {
+                            assets.open("ATC/$currentAccount/$fileName").use { input ->
+                                FileOutputStream(destFile).use { output -> input.copyTo(output) }
+                            }
+                            // ایجاد نسخه با پسوند .toml برای اطمینان ۱۰۰٪ از شناسایی توسط تمام باینری‌ها
+                            if (!fileName.endsWith(".toml")) {
+                                val tomlFile = File(dir, "$fileName.toml")
+                                destFile.copyTo(tomlFile, overwrite = true)
+                            }
                         }
-                        // ایجاد نسخه با پسوند .toml برای اطمینان ۱۰۰٪ از شناسایی توسط تمام باینری‌ها
-                        if (!fileName.endsWith(".toml")) {
-                            val tomlFile = File(targetDir, "$fileName.toml")
-                            destFile.copyTo(tomlFile, overwrite = true)
-                        }
-                        appendNativeLog("ATC", "تزریق فایل $fileName از $currentAccount به محیط اجرایی اَتر انجام شد.")
                     }
                 }
+                appendNativeLog("ATC", "تزریق فایل‌های کانفیگ از $currentAccount به محیط اجرایی انجام شد.")
             } catch (e: Exception) {
                 appendNativeLog("ATCError", "خطا در استخراج فایل‌های اکانت $currentAccount: ${e.message}")
             }
@@ -868,6 +872,7 @@ class MainActivity : FlutterActivity() {
 
     private fun startAetherEngine(mode: String, port: Int, customNoize: String?, extraArgs: List<String>): Boolean {
         stopAetherEngine()
+        ensurePortFree(port, 2500)
 
         val binaryPath = getExecutableBinaryPath("aether") ?: run {
             appendNativeLog("AetherError", "باینری aether یافت نشد.")
@@ -885,10 +890,12 @@ class MainActivity : FlutterActivity() {
 
         try {
             // فقط فایل‌های قفل و کش‌های موقت پاک شوند، اما اکانت ذخیره‌شده حفظ شود تا کلودفلر ارور لیمیت ۳۰ ثانیه ندهد
-            modeDir.listFiles()?.forEach { file ->
-                if (file.name.contains("lastconn") || file.name.contains("lock") || file.name.contains("cache")) {
-                    file.delete()
-                    appendNativeLog("AetherClean", "کَش و قفل قدیمی حذف شد: ${file.name}")
+            listOf(modeDir, filesDir).forEach { dir ->
+                dir.listFiles()?.forEach { file ->
+                    if (file.name.contains("lastconn") || file.name.contains("lock") || file.name.contains("cache")) {
+                        file.delete()
+                        appendNativeLog("AetherClean", "کَش و قفل قدیمی حذف شد: ${file.name}")
+                    }
                 }
             }
         } catch (_: Exception) {}
@@ -899,7 +906,7 @@ class MainActivity : FlutterActivity() {
         command.add("127.0.0.1:$port")
         command.add("-4")
         command.add("--startup-secs")
-        command.add("30")
+        command.add("60")
 
         when (normalizedMode) {
             "auto", "masque_h2", "h2" -> {
