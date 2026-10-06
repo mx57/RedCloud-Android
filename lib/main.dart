@@ -102,7 +102,7 @@ void main() async {
   final bool initialDarkMode = prefs.getBool('saved_dark_mode') ?? true;
   final bool isFirstRun = prefs.getBool('first_launch_lang_selected') != true;
 
-  AppLogger.log("SYSTEM", "RedCloud VPN Initialized.");
+  AppLogger.log("SYSTEM", "Инициализация RedCloud VPN.");
   runApp(MyApp(
     initialLang: initialLang,
     initialDarkMode: initialDarkMode,
@@ -204,6 +204,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
   static const MethodChannel _aetherChannel = MethodChannel('com.redcloud.vpn/aether_channel');
   static const MethodChannel _torChannel = MethodChannel('com.redcloud.vpn/tor_channel');
   static const MethodChannel _lanChannel = MethodChannel('com.redcloud.vpn/lan_channel');
@@ -264,8 +270,8 @@ class _HomePageState extends State<HomePage> {
   String _fastestIP = "104.18.0.14";
   int _bestPing = 0;
 
-  String _serverName = "هیچ سروری انتخاب نشده است";
-  String _protocolType = "نامشخص";
+  String _serverName = "";
+  String _protocolType = "";
   String _fullConfigJson = "";
   String _remark = "RedCloud Server";
 
@@ -291,20 +297,20 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (_) {}
   }
-  String _torStepStatus = "آماده اتصال";
+  String _torStepStatus = "";
   int _torCurrentStep = 0;
 
   bool _isPsiphonHybrid = true;
   bool _isPsiphonCdnFronting = false;
   String _selectedPsiphonCountry = "CA";
   final List<Map<String, String>> _psiphonCountries = [
-    {"code": "CA", "name": "Canada 🇨🇦 (کانادا)"},
-    {"code": "DE", "name": "Germany 🇩🇪 (آلمان)"},
-    {"code": "US", "name": "United States 🇺🇸 (آمریکا)"},
-    {"code": "GB", "name": "United Kingdom 🇬🇧 (انگلیس)"},
-    {"code": "NL", "name": "Netherlands 🇳🇱 (هلند)"},
-    {"code": "FR", "name": "France 🇫🇷 (فرانسه)"},
-    {"code": "AUTO", "name": "Best Available (خودکار)"},
+    {"code": "CA", "name": "Канада 🇨🇦 / Canada"},
+    {"code": "DE", "name": "Германия 🇩🇪 / Germany"},
+    {"code": "US", "name": "США 🇺🇸 / USA"},
+    {"code": "GB", "name": "Великобритания 🇬🇧 / UK"},
+    {"code": "NL", "name": "Нидерланды 🇳🇱 / Netherlands"},
+    {"code": "FR", "name": "Франция 🇫🇷 / France"},
+    {"code": "AUTO", "name": "Автовыбор / Auto"},
   ];
 
   int _lastSentDownload = 0;
@@ -850,7 +856,7 @@ class _HomePageState extends State<HomePage> {
         }
       }
     } catch (e) {
-      AppLogger.log("TELEMETRY", "استعلام تلمتری: $e");
+      AppLogger.log("TELEMETRY", "Ошибка запроса телеметрии: $e");
     } finally {
       if (mounted && _isTestingIp) {
         setState(() {
@@ -873,7 +879,7 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(20),
               side: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
             ),
-            title: const Row(
+            title: Row(
               children: [
                 Icon(Icons.language_rounded, color: Color(0xFF3B82F6), size: 28),
                 SizedBox(width: 10),
@@ -975,7 +981,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    AppLogger.log("CORE", "Initializing Flutter V2Ray plugin...");
+    AppLogger.log("CORE", "Инициализация плагина Flutter V2Ray...");
     flutterV2ray.initialize(
       notificationIconResourceType: "mipmap",
       notificationIconResourceName: "ic_launcher",
@@ -1060,7 +1066,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('webrtc_shield_traffic', value);
-      AppLogger.log("SHIELD", "وضعیت سپر ضد نشت WebRTC: $value");
+      AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
     } catch (_) {}
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1075,7 +1081,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('hybrid_mode_traffic', value);
-      AppLogger.log("HYBRID", "وضعیت حالت هیبریدی: $value");
+      AppLogger.log("HYBRID", "Статус гибридного режима: $value");
     } catch (_) {}
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1090,7 +1096,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('bypass_iran_traffic', value);
-      AppLogger.log("ROUTING", "وضعیت بایپس ایران: $value");
+      AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
     } catch (_) {}
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1121,20 +1127,20 @@ class _HomePageState extends State<HomePage> {
           if (engine == ActiveEngine.aether && aetherAlive) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.aether);
             _startHeartbeat();
-            AppLogger.log("STATE", "وضعیت اتصال اَتر از پس‌زمینه بازیابی شد.");
+            AppLogger.log("STATE", "Состояние подключения Aether восстановлено из фонового режима.");
           } else if (engine == ActiveEngine.tor && torAlive) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.tor);
             _startHeartbeat();
-            AppLogger.log("STATE", "وضعیت اتصال تور از پس‌زمینه بازیابی شد.");
+            AppLogger.log("STATE", "Состояние подключения Tor восстановлено из фонового режима.");
           } else if (engine == ActiveEngine.dashboard) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.dashboard);
             _startHeartbeat();
-            AppLogger.log("STATE", "وضعیت اتصال داشبورد از پس‌زمینه بازیابی شد.");
+            AppLogger.log("STATE", "Состояние подключения восстановлено из фонового режима.");
           }
         }
       }
     } catch (e) {
-      AppLogger.log("STATE", "خطا در بازیابی وضعیت پس‌زمینه: $e");
+      AppLogger.log("STATE", "Ошибка восстановления фонового состояния: $e");
     }
   }
 
@@ -1280,7 +1286,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<List<String>> _runDnsRescueScan() async {
-    AppLogger.log("DNS-RESCUE", "Starting DNS rescue probe...");
+    AppLogger.log("DNS-RESCUE", "Запуск поиска чистых серверов DNS...");
     List<String> candidates = [];
     try {
       final String dnsContent = await rootBundle.loadString('assets/DNS.txt');
@@ -1321,7 +1327,7 @@ class _HomePageState extends State<HomePage> {
     verified.sort((a, b) => (a['latency'] as int).compareTo(b['latency'] as int));
     if (verified.isNotEmpty) {
       final finalDns = verified.map((e) => e['ip'] as String).toList();
-      AppLogger.log("DNS-RESCUE", "Rescue successful. Active DNS: $finalDns");
+      AppLogger.log("DNS-RESCUE", "Проверка DNS успешно завершена. Активные DNS: $finalDns");
       return finalDns;
     }
     return ["8.8.8.8", "9.9.9.9", "1.1.1.1"];
@@ -1554,25 +1560,55 @@ class _HomePageState extends State<HomePage> {
             "domain:yandex.ru",
             "domain:yandex.net",
             "domain:ya.ru",
+            "domain:yandex.by",
+            "domain:yandex.kz",
+            "domain:yastatic.net",
+            "domain:dzen.ru",
             "domain:vk.com",
             "domain:vk.ru",
             "domain:vkplay.ru",
+            "domain:vkvd.ru",
             "domain:ok.ru",
             "domain:gosuslugi.ru",
+            "domain:mos.ru",
+            "domain:nalog.gov.ru",
+            "domain:nalog.ru",
+            "domain:cbr.ru",
             "domain:sberbank.ru",
             "domain:sber.ru",
             "domain:tbank.ru",
             "domain:tinkoff.ru",
             "domain:vtb.ru",
             "domain:alfabank.ru",
+            "domain:raiffeisen.ru",
+            "domain:gazprombank.ru",
+            "domain:psbank.ru",
+            "domain:open.ru",
+            "domain:rshb.ru",
+            "domain:sovcombank.ru",
+            "domain:mirconnect.ru",
+            "domain:nspk.ru",
             "domain:ozon.ru",
             "domain:wildberries.ru",
+            "domain:wb.ru",
             "domain:mail.ru",
             "domain:rambler.ru",
             "domain:rutube.ru",
             "domain:kinopoisk.ru",
             "domain:avito.ru",
             "domain:sdek.ru",
+            "domain:2gis.ru",
+            "domain:hh.ru",
+            "domain:auto.ru",
+            "domain:lenta.ru",
+            "domain:ria.ru",
+            "domain:rbc.ru",
+            "domain:tass.ru",
+            "domain:kommersant.ru",
+            "domain:ivi.ru",
+            "domain:okko.tv",
+            "domain:kion.ru",
+            "domain:wink.ru",
             "domain:ir",
             "domain:shaparak.ir",
             "domain:divar.ir",
@@ -1601,7 +1637,18 @@ class _HomePageState extends State<HomePage> {
             "195.208.0.0/16",
             "178.248.0.0/16",
             "95.173.0.0/16",
-            "213.180.193.0/24"
+            "213.180.193.0/24",
+            "87.250.250.0/24",
+            "77.88.0.0/18",
+            "185.16.244.0/22",
+            "95.163.0.0/16",
+            "217.69.128.0/20",
+            "128.140.168.0/21",
+            "194.54.14.0/23",
+            "194.186.0.0/16",
+            "212.11.128.0/19",
+            "91.194.226.0/23",
+            "193.232.146.0/23"
           ],
           "outboundTag": "direct"
         }
@@ -1693,15 +1740,15 @@ class _HomePageState extends State<HomePage> {
       _realPingMs = null;
     });
 
-    _showSnackBar("در حال اتصال به شبکه سایفون ($_selectedPsiphonCountry)...");
+    _showSnackBar(_l("در حال اتصال به شبکه سایفون ($_selectedPsiphonCountry)...", "Подключение к сети Psiphon ($_selectedPsiphonCountry)...", "Connecting to Psiphon network ($_selectedPsiphonCountry)..."));
     await _resetAllEngines();
 
     try {
       if (_isPsiphonHybrid) {
-        _showSnackBar("راه‌اندازی پل اَتر مسک برای سایفون...");
+        _showSnackBar(_l("راه‌اندازی پل اَتر مسک برای سایفون...", "Запуск моста Aether MASQUE для Psiphon...", "Launching Aether MASQUE bridge for Psiphon..."));
         final dynamic aetherRes = await _aetherChannel.invokeMethod('startSmartAether', {'port': 1819});
         if (aetherRes == null) {
-          throw Exception("پل اَتر پاسخگو نبود.");
+          throw Exception(_l("پل اَتر پاسخگو نبود.", "Моست Aether не ответил.", "Aether bridge did not respond."));
         }
       }
 
@@ -1713,7 +1760,7 @@ class _HomePageState extends State<HomePage> {
       }) ?? false;
 
       if (!started) {
-        throw Exception("عدم امکان استارت پروسس سایفون");
+        throw Exception(_l("عدم امکان استارت پروسس سایفون", "Не удалось запустить процесс Psiphon", "Could not start Psiphon process"));
       }
 
       bool socksReady = false;
@@ -1727,7 +1774,7 @@ class _HomePageState extends State<HomePage> {
       }
 
       if (!socksReady) {
-        throw Exception("تایم‌اوت ساکس سایفون (پورت ۹۰۸۱)");
+        throw Exception(_l("تایم‌اوت ساکس سایفون (پورت ۹۰۸۱)", "Тайм-аут SOCKS Psiphon (порт 9081)", "Psiphon SOCKS timeout (port 9081)"));
       }
 
       if (await flutterV2ray.requestPermission()) {
@@ -1750,7 +1797,7 @@ class _HomePageState extends State<HomePage> {
             _isTransitioning = false;
           });
         }
-        _showSnackBar("شبکه سایفون فعال شد (تونل کل دستگاه)");
+        _showSnackBar(_l("شبکه سایفون فعال شد (تونل کل دستگاه)", "Сеть Psiphon активна (туннель для всего устройства)", "Psiphon network active (Full device tunnel)"));
       } else {
         await _resetAllEngines();
         if (mounted) setState(() => _activeEngine = ActiveEngine.none);
@@ -1759,7 +1806,7 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       await _resetAllEngines();
       if (mounted) setState(() => _activeEngine = ActiveEngine.none);
-      _showSnackBar("خطا در سایفون: ${e.toString().replaceAll("Exception: ", "")}");
+      _showSnackBar(_l("خطا در سایفون: ${e.toString().replaceAll("Exception: ", "")}", "Ошибка Psiphon: ${e.toString().replaceAll("Exception: ", "")}", "Psiphon error: ${e.toString().replaceAll("Exception: ", "")}"));
     } finally {
       if (mounted) setState(() => _isTransitioning = false);
     }
@@ -2104,7 +2151,7 @@ class _HomePageState extends State<HomePage> {
     // در صورت فعال بودن تیک هیبریدی، ابتدا اَتر به شکل هوشمند روی بهترین پروتکل راه‌اندازی می‌شود
     if (_isHybridMode) {
       _showSnackBar(_t("hybrid_starting"));
-      AppLogger.log("HYBRID", "شروع پویش هوشمند اَتر برای اتصال هیبریدی...");
+      AppLogger.log("HYBRID", "Запуск интеллектуального подбора Aether для гибридного подключения...");
       try {
         final dynamic result = await _aetherChannel.invokeMethod('startSmartAether', {
           'port': 1819,
@@ -2113,10 +2160,10 @@ class _HomePageState extends State<HomePage> {
           final mode = result['mode']?.toString() ?? 'unknown';
           final noize = result['noize']?.toString() ?? 'default';
           _hybridStatusText = "$mode ($noize)";
-          AppLogger.log("HYBRID", "موتور اَتر با موفقیت روی $mode و نویز $noize فعال شد.");
+          AppLogger.log("HYBRID", "Движок Aether успешно активирован в режиме $mode с шумом $noize.");
         }
       } catch (e) {
-        AppLogger.log("HYBRID-ERR", "خطا در استارت هوشمند اَتر: $e");
+        AppLogger.log("HYBRID-ERR", "Ошибка запуска Aether в гибридном режиме: $e");
         await _resetAllEngines();
         setState(() {
           _isTransitioning = false;
@@ -2139,7 +2186,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (_fullConfigJson.isEmpty) {
-      AppLogger.log("V2RAY", "کانفیگ برای استارت معتبر نیست.", isError: true);
+      AppLogger.log("V2RAY", "Конфигурация недействительна для запуска.", isError: true);
       _showSnackBar(_t("config_err"));
       setState(() {
         _isTransitioning = false;
@@ -2231,7 +2278,7 @@ class _HomePageState extends State<HomePage> {
         configText = v2rayURL.getFullConfiguration();
         _remark = v2rayURL.remark;
         if (updateUI && mounted) {
-          String protocol = "نامشخص";
+          String protocol = _l("نامشخص", "Неизвестно", "Unknown");
           final String typeStr = v2rayURL.runtimeType.toString().toLowerCase();
           if (typeStr.contains("vless")) {
             protocol = "VLESS";
@@ -2366,25 +2413,55 @@ class _HomePageState extends State<HomePage> {
             "domain:yandex.ru",
             "domain:yandex.net",
             "domain:ya.ru",
+            "domain:yandex.by",
+            "domain:yandex.kz",
+            "domain:yastatic.net",
+            "domain:dzen.ru",
             "domain:vk.com",
             "domain:vk.ru",
             "domain:vkplay.ru",
+            "domain:vkvd.ru",
             "domain:ok.ru",
             "domain:gosuslugi.ru",
+            "domain:mos.ru",
+            "domain:nalog.gov.ru",
+            "domain:nalog.ru",
+            "domain:cbr.ru",
             "domain:sberbank.ru",
             "domain:sber.ru",
             "domain:tbank.ru",
             "domain:tinkoff.ru",
             "domain:vtb.ru",
             "domain:alfabank.ru",
+            "domain:raiffeisen.ru",
+            "domain:gazprombank.ru",
+            "domain:psbank.ru",
+            "domain:open.ru",
+            "domain:rshb.ru",
+            "domain:sovcombank.ru",
+            "domain:mirconnect.ru",
+            "domain:nspk.ru",
             "domain:ozon.ru",
             "domain:wildberries.ru",
+            "domain:wb.ru",
             "domain:mail.ru",
             "domain:rambler.ru",
             "domain:rutube.ru",
             "domain:kinopoisk.ru",
             "domain:avito.ru",
             "domain:sdek.ru",
+            "domain:2gis.ru",
+            "domain:hh.ru",
+            "domain:auto.ru",
+            "domain:lenta.ru",
+            "domain:ria.ru",
+            "domain:rbc.ru",
+            "domain:tass.ru",
+            "domain:kommersant.ru",
+            "domain:ivi.ru",
+            "domain:okko.tv",
+            "domain:kion.ru",
+            "domain:wink.ru",
             "domain:ir",
             "domain:shaparak.ir",
             "domain:divar.ir",
@@ -2413,7 +2490,18 @@ class _HomePageState extends State<HomePage> {
             "195.208.0.0/16",
             "178.248.0.0/16",
             "95.173.0.0/16",
-            "213.180.193.0/24"
+            "213.180.193.0/24",
+            "87.250.250.0/24",
+            "77.88.0.0/18",
+            "185.16.244.0/22",
+            "95.163.0.0/16",
+            "217.69.128.0/20",
+            "128.140.168.0/21",
+            "194.54.14.0/23",
+            "194.186.0.0/16",
+            "212.11.128.0/19",
+            "91.194.226.0/23",
+            "193.232.146.0/23"
           ],
           "outboundTag": "direct"
         });
@@ -2438,6 +2526,7 @@ class _HomePageState extends State<HomePage> {
           final stream = Map<String, dynamic>.from((outbound['streamSettings'] as Map?) ?? {});
           final sock = Map<String, dynamic>.from((stream['sockopt'] as Map?) ?? {});
           sock['tcpKeepAliveInterval'] = 15;
+          sock['tcpNoDelay'] = true;
 
           if (_isHybridMode) {
             final tag = outbound['tag']?.toString().toLowerCase() ?? '';
@@ -2482,9 +2571,9 @@ class _HomePageState extends State<HomePage> {
 
       configMap['outbounds'] = outbounds;
       _fullConfigJson = jsonEncode(configMap);
-      AppLogger.log("CONFIG", "کانفیگ V2Ray با موفقیت ساخته شد (${_fullConfigJson.length} کاراکتر)");
+      AppLogger.log("CONFIG", "Конфигурация V2Ray успешно создана (${_fullConfigJson.length} символов)");
     } catch (e) {
-      AppLogger.log("CONFIG-ERR", "خطا در پردازش کانفیگ: $e", isError: true);
+      AppLogger.log("CONFIG-ERR", "Ошибка обработки конфигурации: $e", isError: true);
     }
   }
 
@@ -2781,10 +2870,10 @@ class _HomePageState extends State<HomePage> {
     final Uri url = Uri.parse(urlString);
     try {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        _showSnackBar("امکان باز کردن آدرس وجود ندارد");
+        _showSnackBar(_l("امکان باز کردن آدرس وجود ندارد", "Не удалось открыть ссылку", "Could not open URL"));
       }
     } catch (e) {
-      _showSnackBar("خطا: $e");
+      _showSnackBar(_l("خطا: $e", "Ошибка: $e", "Error: $e"));
     }
   }
 
@@ -2798,12 +2887,12 @@ class _HomePageState extends State<HomePage> {
             borderRadius: BorderRadius.all(Radius.circular(20)),
             side: BorderSide(color: Color(0xFF3B82F6), width: 1.2),
           ),
-          title: const Row(
+          title: Row(
             children: [
               Icon(Icons.favorite_rounded, color: Colors.amberAccent, size: 24),
               SizedBox(width: 10),
               Text(
-                'حمایت مالی از پروژه (Donate)',
+                _l('حمایت مالی از پروژه (Donate)', 'Поддержать проект (Donate)', 'Donate to Project'),
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
@@ -2813,8 +2902,7 @@ class _HomePageState extends State<HomePage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'با حمایت مالی خود، به پایداری، ارتقا و نگهداری سرورهای ضدسانسور RedCloud کمک می‌کنید. بی‌نهایت سپاسگزاریم! ❤️',
+                Text(_l('با حمایت مالی خود، به پایداری، ارتقا و نگهداری سرورهای ضدسانسور RedCloud کمک می‌کنید. بی‌نهایت سپاسگزاریم! ❤️', 'Ваша поддержка помогает содержать и развивать антицензурные сервера RedCloud. Большое спасибо! ❤️', 'Your support helps maintain and develop RedCloud anti-censorship servers. Thank you very much! ❤️'),
                   style: TextStyle(fontSize: 12.5, color: Colors.white70, height: 1.6),
                   textAlign: TextAlign.justify,
                 ),
@@ -2835,13 +2923,13 @@ class _HomePageState extends State<HomePage> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          const Row(
+                          Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.currency_bitcoin_rounded, color: Colors.greenAccent, size: 18),
                               SizedBox(width: 6),
                               Text(
-                                'ارز: USDT (Tether)',
+                                _l('ارز: USDT (Tether)', 'Валюتا: USDT (Tether)', 'Currency: USDT (Tether)'),
                                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.greenAccent),
                               ),
                             ],
@@ -2861,8 +2949,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      const Text(
-                        'آدرس کیف پول:',
+                      Text(_l('آدرس کیف پول:', 'Адрес кошельکа:', 'Wallet Address:'),
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       const SizedBox(height: 4),
@@ -2882,7 +2969,7 @@ class _HomePageState extends State<HomePage> {
                           onPressed: () {
                             Clipboard.setData(const ClipboardData(text: usdtBnbAddress));
                             Navigator.pop(context);
-                            _showSnackBar('آدرس ولت با موفقیت کپی شد! تشکر از حمایت شما ❤️');
+                            _showSnackBar(_l('آدرس ولت با موفقیت کپی شد! تشکر از حمایت شما ❤️', 'Адрес кошелька скопирован! Спасибо за поддержку! ❤️', 'Wallet address copied! Thank you for your support! ❤️'));
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3B82F6),
@@ -2890,8 +2977,7 @@ class _HomePageState extends State<HomePage> {
                             padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                           icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 16),
-                          label: const Text(
-                            'کپی آدرس کیف پول',
+                          label: Text(_l('کپی آدرس کیف پول', 'Скопировать адрес кошелька', 'Copy Wallet Address'),
                             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         ),
@@ -2905,7 +2991,7 @@ class _HomePageState extends State<HomePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('بستن', style: TextStyle(color: Colors.grey)),
+              child: Text(_l('بستن', 'Закрыть', 'Close'), style: const TextStyle(color: Colors.grey)),
             ),
           ],
         );
@@ -2935,7 +3021,7 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       child: _isTestingIp
-          ? const Row(
+          ? Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(
@@ -2945,7 +3031,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 SizedBox(width: 12),
                 Text(
-                  "در حال شناسایی مشخصات سرور خروجی...",
+                  _l("در حال شناسایی مشخصات سرور خروجی...", "Определение параметров внешнего сервера...", "Identifying exit server details..."),
                   style: TextStyle(fontSize: 12, color: Color(0xFF00F2FE), fontWeight: FontWeight.bold),
                 ),
               ],
@@ -3139,31 +3225,31 @@ class _HomePageState extends State<HomePage> {
     final List<Map<String, dynamic>> tabs = [
       {
         "index": 0,
-        "title": widget.currentLang == "fa" ? "داشبورد" : "Dashboard",
+        "title": _t("tab_dashboard"),
         "icon": Icons.dashboard_rounded,
         "color": const Color(0xFF00F2FE),
       },
       {
         "index": 1,
-        "title": widget.currentLang == "fa" ? "اَتر" : "Aether",
+        "title": _t("tab_aether"),
         "icon": Icons.bolt_rounded,
         "color": const Color(0xFF06B6D4),
       },
       {
         "index": 2,
-        "title": widget.currentLang == "fa" ? "تور" : "Tor",
+        "title": _t("tab_tor"),
         "icon": Icons.security_rounded,
         "color": const Color(0xFFC084FC),
       },
       {
         "index": 3,
-        "title": widget.currentLang == "fa" ? "سایفون" : "Psiphon",
+        "title": _l("سایفون", "Psiphon", "Psiphon"),
         "icon": Icons.hub_rounded,
         "color": const Color(0xFF10B981),
       },
       {
         "index": 4,
-        "title": widget.currentLang == "fa" ? "تنظیمات" : "Settings",
+        "title": _t("tab_settings"),
         "icon": Icons.tune_rounded,
         "color": const Color(0xFF38BDF8),
       },
@@ -3299,7 +3385,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _checkForAppUpdate({bool silent = false}) async {
     if (!silent) {
-      _showSnackBar(widget.currentLang == "fa" ? "در حال بررسی آخرین نسخه در گیت‌هاب..." : "Checking for updates...");
+      _showSnackBar(_l("در حال بررسی آخرین نسخه در گیت‌هاب...", "Проверка обновлений на GitHub...", "Checking for updates on GitHub..."));
     }
 
     try {
@@ -3375,17 +3461,17 @@ class _HomePageState extends State<HomePage> {
           }
         } else {
           if (!silent && mounted) {
-            _showSnackBar(widget.currentLang == "fa" ? "شما در حال استفاده از آخرین نسخه هستید ($tagName)." : "You are using the latest version ($tagName).");
+            _showSnackBar(_l("شما در حال استفاده از آخرین نسخه هستید ($tagName).", "Вы используете последнюю версию ($tagName).", "You are using the latest version ($tagName)."));
           }
         }
       } else {
         if (!silent && mounted) {
-          _showSnackBar(widget.currentLang == "fa" ? "امکان دریافت اطلاعات آپدیت وجود ندارد." : "Could not fetch update info.");
+          _showSnackBar(_l("امکان دریافت اطلاعات آپدیت وجود ندارد.", "Не удалось получить информацию об обновлении.", "Could not fetch update info."));
         }
       }
     } catch (_) {
       if (!silent && mounted) {
-        _showSnackBar(widget.currentLang == "fa" ? "خطا در اتصال به سرور گیت‌هاب." : "Failed to connect to GitHub.");
+        _showSnackBar(_l("خطا در اتصال به سرور گیت‌هاب.", "Ошибка подключения к GitHub.", "Failed to connect to GitHub."));
       }
     }
   }
@@ -3425,7 +3511,7 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isFa ? "بروزرسانی جدید آمد!" : "New Update Available!",
+                    _l("بروزرسانی جدید آمد!", "Доступно новое обновление!", "New Update Available!"),
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
@@ -3442,7 +3528,7 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              isFa ? "آیا مایلید نسخه جدید را دانلود و نصب کنید؟" : "Would you like to download and install this update?",
+              _l("آیا مایلید نسخه جدید را دانلود و نصب کنید؟", "Хотите скачать и установить новую версию?", "Would you like to download and install this update?"),
               style: const TextStyle(fontSize: 12.5, color: Colors.white70),
             ),
             const SizedBox(height: 12),
@@ -3468,7 +3554,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: Text(isFa ? "خیر (بعداً)" : "Later", style: const TextStyle(color: Colors.grey)),
+            child: Text(_l("خیر (بعداً)", "Позже", "Later"), style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -3483,7 +3569,7 @@ class _HomePageState extends State<HomePage> {
             ),
             icon: const Icon(Icons.download_rounded, size: 18),
             label: Text(
-              isFa ? "بله (دانلود و نصب)" : "Yes (Update Now)",
+              _l("بله (دانلود و نصب)", "Обновить", "Yes (Update Now)"),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
@@ -3524,7 +3610,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    isFa ? "در حال دانلود بروزرسانی..." : "Downloading Update...",
+                    _l("در حال دانلود بروزرسانی...", "Загрузка обновления...", "Downloading Update..."),
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                 ],
@@ -3564,7 +3650,7 @@ class _HomePageState extends State<HomePage> {
                     isCancelled = true;
                     Navigator.pop(progressCtx);
                   },
-                  child: Text(isFa ? "لغو دانلود" : "Cancel", style: const TextStyle(color: Colors.redAccent)),
+                  child: Text(_l("لغو دانلود", "Отмена", "Cancel"), style: const TextStyle(color: Colors.redAccent)),
                 ),
               ],
             );
@@ -3612,7 +3698,7 @@ class _HomePageState extends State<HomePage> {
               Navigator.pop(context);
             }
 
-            _showSnackBar(isFa ? "دانلود با موفقیت انجام شد! در حال باز کردن نصاب..." : "Download completed! Launching installer...");
+            _showSnackBar(_l("دانلود با موفقیت انجام شد! در حال باز کردن نصاب...", "Загрузка завершена! Запуск установщика...", "Download completed! Launching installer..."));
 
             // فراخوانی صفحهٔ رسمی نصب اندروید
             await _lanChannel.invokeMethod('installApk', {'filePath': saveFile.path});
@@ -3620,17 +3706,17 @@ class _HomePageState extends State<HomePage> {
           onError: (e) {
             sink.close();
             if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-            _showSnackBar(isFa ? "خطا در دانلود فایل آپدیت: $e" : "Download failed: $e");
+            _showSnackBar(_l("خطا در دانلود فایل آپدیت: $e", "Ошибка загрузки файла обновления: $e", "Download failed: $e"));
           },
           cancelOnError: true,
         );
       } else {
         if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-        _showSnackBar(isFa ? "خطای سرور دانلود (کد ${response.statusCode})" : "Server error (${response.statusCode})");
+        _showSnackBar(_l("خطای سرور دانلود (کد ${response.statusCode})", "Ошибка сервера загрузки (код ${response.statusCode})", "Server error (${response.statusCode})"));
       }
     } catch (e) {
       if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-      _showSnackBar(isFa ? "خطا در دانلود: $e" : "Error: $e");
+      _showSnackBar(_l("خطا در دانلود: $e", "Ошибка: $e", "Error: $e"));
     }
   }
 
@@ -3823,7 +3909,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.tune_rounded, color: Color(0xFF00F2FE), size: 19),
-                      tooltip: "مدیریت سرورها و سابسکریپشن",
+                      tooltip: _l("مدیریت سرورها و سابسکریپشن", "Управление серверами и подписками", "Servers & Subscription Management"),
                       onPressed: () async {
                         final selectedConfig = await Navigator.push(
                           context,
@@ -3836,7 +3922,7 @@ class _HomePageState extends State<HomePage> {
                         );
                         if (selectedConfig != null && selectedConfig is Map<String, dynamic>) {
                           _parseAndSaveConfig(selectedConfig['rawLink'] ?? '', updateUI: true);
-                          _showSnackBar("سرور '${selectedConfig['name']}' فعال شد.");
+                          _showSnackBar(_l("سرور '${selectedConfig['name']}' فعال شد.", "Сервер '${selectedConfig['name']}' активирован.", "Server '${selectedConfig['name']}' activated."));
                         }
                       },
                     ),
@@ -4048,8 +4134,7 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           Row(
                             children: [
-                              const Text(
-                                "استخر کلید (ATC): ",
+                              Text(_l("استخر کلید (ATC): ", "Пул ключей (ATC): ", "ATC Key Pool: "),
                                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70),
                               ),
                               Container(
@@ -4060,7 +4145,7 @@ class _HomePageState extends State<HomePage> {
                                   border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.4)),
                                 ),
                                 child: Text(
-                                  _atcAccountName.isNotEmpty && _atcAccountName != "نامشخص" ? _atcAccountName : "آماده بارگذاری",
+                                  _atcAccountName.isNotEmpty && _atcAccountName != "نامشخص" && _atcAccountName != "Неизвестно" ? _atcAccountName : _l("آماده بارگذاری", "Готово к загрузке", "Ready to load"),
                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF06B6D4)),
                                 ),
                               ),
@@ -4068,7 +4153,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            "انقضا و چرخش خودکار: $_atcRemainingDays روز باقی‌مانده",
+                            _l("انقضا و چرخش خودکار: $_atcRemainingDays روز باقی‌مانده", "Срок действия и авторотация: осталось дней: $_atcRemainingDays", "Expiration & Auto-rotate: $_atcRemainingDays days remaining"),
                             style: const TextStyle(fontSize: 10.5, color: Colors.grey),
                           ),
                         ],
@@ -4076,13 +4161,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.autorenew_rounded, size: 20, color: Color(0xFF06B6D4)),
-                      tooltip: "تعویض تصادفی اکانت",
+                      tooltip: _l("تعویض تصادفی اکانت", "Случайная смеنا аккаунта", "Random account reset"),
                       onPressed: (isConnected || isConnecting)
                           ? null
                           : () async {
                               await _aetherChannel.invokeMethod('resetIdentity');
                               await _fetchAtcInfo();
-                              _showSnackBar("اکانت هویت بازنشانی شد؛ در اتصال بعدی کلید تصادفی جدیدی انتخاب می‌شود.");
+                              _showSnackBar(_l("اکانت هویت بازنشانی شد؛ در اتصال بعدی کلید تصادفی جدیدی انتخاب می‌شود.", "Идентификатор аккаунта сброшен; при следующем подключении будет выбран новый случайный ключ.", "Account identity reset; a new random key will be selected on next connection."));
                             },
                     ),
                   ],
@@ -4445,7 +4530,7 @@ class _HomePageState extends State<HomePage> {
                                   }
                                 });
                                 if (val) {
-                                  _showSnackBar("حالت CDN Fronting فعال شد (کشور خودکار: $_selectedPsiphonCountry)");
+                                  _showSnackBar(_l("حالت CDN Fronting فعال شد (کشور خودکار: $_selectedPsiphonCountry)", "Режим CDN Fronting активирован (страна: $_selectedPsiphonCountry)", "CDN Fronting mode activated (Country: $_selectedPsiphonCountry)"));
                                 }
                               },
                       ),
@@ -5438,7 +5523,7 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.currentLang == "fa" ? "سپر ضد نشت WebRTC (Anti-Leak)" : "WebRTC Anti-Leak Shield",
+                          _l("سپر ضد نشت WebRTC (Anti-Leak)", "Защита от утечки WebRTC (Anti-Leak)", "WebRTC Anti-Leak Shield"),
                           style: TextStyle(
                             fontSize: 14, 
                             fontWeight: FontWeight.bold,
@@ -5448,7 +5533,7 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(height: 2),
                         Text(
                           widget.currentLang == "fa" 
-                              ? "مسدودسازی پورت‌های STUN و ممانعت از لو رفتن لوکیشن ایران در مرورگرها" 
+                              ? _l("مسدودسازی پورت‌های STUN و ممانعت از لو رفتن لوکیشن ایران در مرورگرها", "Блокировка STUN-портов для предотвращения утечки IP и геолокации в браузерах", "Block STUN ports to prevent location & IP leaks in browser WebRTC")
                               : "Blocks STUN/TURN discovery ports to prevent location leaks in browsers",
                           style: const TextStyle(fontSize: 11, color: Colors.grey),
                         ),
@@ -5492,12 +5577,12 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.currentLang == "fa" ? "بررسی نسخه جدید (Check for Updates)" : "Check for Updates",
+                            _l("بررسی نسخه جدید (Check for Updates)", "Проверить обновления", "Check for Updates"),
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            widget.currentLang == "fa" ? "نسخه فعلی: v1.2.5 (بررسی آنلاین از مخزن گیت‌هاب)" : "Current: v1.2.5 (Direct GitHub release check)",
+                            _l("نسخه فعلی: v1.2.5 (بررسی آنلاین از مخزن گیت‌هاب)", "Текущая версия: v1.2.5 (прямая проверка с GitHub)", "Current: v1.2.5 (Direct GitHub release check)"),
                             style: const TextStyle(fontSize: 11, color: Colors.grey),
                           ),
                         ],
@@ -5532,7 +5617,7 @@ class _HomePageState extends State<HomePage> {
                 );
                 if (selectedConfig != null && selectedConfig is Map<String, dynamic>) {
                   _parseAndSaveConfig(selectedConfig['rawLink'] ?? '', updateUI: true);
-                  _showSnackBar("سرور '${selectedConfig['name']}' انتخاب شد.");
+                  _showSnackBar(_l("سرور '${selectedConfig['name']}' انتخاب شد.", "Выбран сервер '${selectedConfig['name']}'.", "Server '${selectedConfig['name']}' selected."));
                 }
               },
               child: Padding(
@@ -5549,12 +5634,12 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.currentLang == "fa" ? "مدیریت سرورها و سابسکریپشن (Config & Servers)" : "Servers & Subscription Management",
+                            _l("مدیریت سرورها و سابسکریپشن (Config & Servers)", "Управление серверами и подписками", "Servers & Subscription Management"),
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            widget.currentLang == "fa" ? "افزودن لینک ساب، ویرایش کانفیگ‌ها و تست پینگ سریع" : "Manage subscriptions, edit configs and ultra-fast ping testing",
+                            _l("افزودن لینک ساب، ویرایش کانفیگ‌ها و تست پینگ سریع", "Добавление подписок, редактирование конфигов и быстрый пиنگ", "Manage subscriptions, edit configs and ultra-fast ping testing"),
                             style: const TextStyle(fontSize: 11, color: Colors.grey),
                           ),
                         ],
@@ -5611,7 +5696,7 @@ class _HomePageState extends State<HomePage> {
                           Row(
                             children: [
                               Text(
-                                widget.currentLang == "fa" ? "تونل انتخابی برنامه‌ها (Split Tunnel)" : "Split Tunneling",
+                                _l("تونل انتخابی برنامه‌ها (Split Tunnel)", "Раздельное туنнелирование (Split Tunneling)", "Split Tunneling"),
                                 style: TextStyle(
                                   fontSize: 14, 
                                   fontWeight: FontWeight.bold,
@@ -5628,8 +5713,7 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                   child: Text(
                                     _splitTunnelMode == "bypass"
-                                        ? (widget.currentLang == "fa" ? "بایپس: ${_splitTunnelSelectedApps.length}" : "Bypass: ${_splitTunnelSelectedApps.length}")
-                                        : (widget.currentLang == "fa" ? "فقط پروکسی: ${_splitTunnelSelectedApps.length}" : "Proxy: ${_splitTunnelSelectedApps.length}"),
+                                        ? _l("بایپس: ${_splitTunnelSelectedApps.length}", "Исключения: ${_splitTunnelSelectedApps.length}", "Bypass: ${_splitTunnelSelectedApps.length}") : _l("فقط پروکسی: ${_splitTunnelSelectedApps.length}", "Только проکسی: ${_splitTunnelSelectedApps.length}", "Proxy: ${_splitTunnelSelectedApps.length}"),
                                     style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE)),
                                   ),
                                 ),
@@ -5640,9 +5724,7 @@ class _HomePageState extends State<HomePage> {
                           Text(
                             _splitTunnelEnabled
                                 ? (_splitTunnelMode == "bypass"
-                                    ? (widget.currentLang == "fa" ? "برنامه‌های انتخابی بدون فیلترشکن باز می‌شوند" : "Selected apps bypass VPN directly")
-                                    : (widget.currentLang == "fa" ? "تنها برنامه‌های انتخابی از فیلترشکن عبور می‌کنند" : "Only selected apps route through VPN"))
-                                : (widget.currentLang == "fa" ? "تنظیم عبور مستقیم برنامه‌های بانکی یا پروکسی اختصاصی" : "Exclude banking apps or proxy only specific apps"),
+                                    ? _l("برنامه‌های انتخابی بدون فیلترشکن باز می‌شوند", "Выбранные приложения работают напрямую без VPN", "Selected apps bypass VPN directly") : _l("تنها برنامه‌های انتخابی از فیلترشکن عبور می‌کنند", "Только выбранные приложения идут через VPN", "Only selected apps route through VPN")) : _l("تنظیم عبور مستقیم برنامه‌های بانکی یا پروکسی اختصاصی", "Настройка прямого доступа для банков и выборочных приложений", "Exclude banking apps or proxy only specific apps"),
                             style: const TextStyle(fontSize: 11, color: Colors.grey),
                           ),
                         ],
@@ -6049,6 +6131,12 @@ class LogsScreen extends StatefulWidget {
 }
 
 class _LogsScreenState extends State<LogsScreen> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
@@ -6073,7 +6161,7 @@ class _LogsScreenState extends State<LogsScreen> {
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(widget.currentLang == "fa" ? "گزارشات پاک‌سازی شدند." : "Logs cleared."),
+        content: Text(_l("گزارشات پاک‌سازی شدند.", "Логи успешно очищены.", "Logs cleared.")),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -6121,20 +6209,20 @@ class _LogsScreenState extends State<LogsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            isFa ? "گزارشات و لاگ‌های سیستم" : "System Logs & Diagnostics",
+            _l("گزارشات و لاگ‌های سیستم", "Системные логи и диагностика", "System Logs & Diagnostics"),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           actions: [
             IconButton(
               icon: const Icon(Icons.copy_all_rounded),
-              tooltip: isFa ? "کپی همه" : "Copy All",
+              tooltip: _l("کپی همه", "Скопировать всё", "Copy All"),
               onPressed: () {
                 final text = AppLogger.getAllLogsFormatted();
                 if (text.isNotEmpty) {
                   Clipboard.setData(ClipboardData(text: text));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(isFa ? "تمامی لاگ‌ها کپی شدند!" : "All logs copied to clipboard!"),
+                      content: Text(_l("تمامی لاگ‌ها کپی شدند!", "Все логи скопированы в буфер обмена!", "All logs copied to clipboard!")),
                       duration: const Duration(seconds: 2),
                     ),
                   );
@@ -6143,7 +6231,7 @@ class _LogsScreenState extends State<LogsScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.delete_sweep_rounded),
-              tooltip: isFa ? "پاک‌سازی" : "Clear All",
+              tooltip: _l("پاک‌سازی", "Очистить всё", "Clear All"),
               onPressed: _clearLogs,
             ),
           ],
@@ -6160,7 +6248,7 @@ class _LogsScreenState extends State<LogsScreen> {
                   });
                 },
                 decoration: InputDecoration(
-                  hintText: isFa ? "جستجو در متن لاگ‌ها..." : "Filter logs...",
+                  hintText: _l("جستجو در متن لاگ‌ها...", "Поиск در логах...", "Filter logs..."),
                   hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchQuery.isNotEmpty
@@ -6196,7 +6284,7 @@ class _LogsScreenState extends State<LogsScreen> {
                   if (filteredLogs.isEmpty) {
                     return Center(
                       child: Text(
-                        isFa ? "هنوز هیچ لاگی ثبت نشده است." : "No logs available.",
+                        _l("هنوز هیچ لاگی ثبت نشده است.", "Логи пока отсутствуют.", "No logs available."),
                         style: const TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     );
@@ -6258,7 +6346,7 @@ class _LogsScreenState extends State<LogsScreen> {
         floatingActionButton: FloatingActionButton.small(
           backgroundColor: const Color(0xFF3B82F6),
           onPressed: _scrollToBottom,
-          tooltip: isFa ? "اسکرول به انتها" : "Scroll to bottom",
+          tooltip: _l("اسکرول به انتها", "Прокрутить вниз", "Scroll to bottom"),
           child: const Icon(Icons.arrow_downward, color: Colors.white),
         ),
       ),
@@ -6278,6 +6366,12 @@ class LanShareScreen extends StatefulWidget {
 }
 
 class _LanShareScreenState extends State<LanShareScreen> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
   static const MethodChannel _lanChannel = MethodChannel('com.redcloud.vpn/lan_channel');
 
   final TextEditingController _ssidController = TextEditingController(text: "RedCloud");
@@ -6372,7 +6466,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            isFa ? "اشتراک شبکه محلی (LAN Share)" : "LAN Share & Hotspot",
+            _l("اشتراک شبکه محلی (LAN Share)", "Общий доступ по локальной сети (LAN Share)", "LAN Share & Hotspot"),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           centerTitle: true,
@@ -6418,8 +6512,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                     const SizedBox(height: 12),
                     Text(
                       _isHotspotMode
-                          ? (isFa ? "هات‌اسپات فعال است! با دوربین گوشی بارکد را اسکن کنید." : "Wi-Fi Hotspot Active! Scan with camera to connect.")
-                          : (isFa ? "پروکسی فعال است! بارکد را برای اتصال تلگرام اسکن کنید." : "Proxy Active! Scan QR code to connect Telegram."),
+                          ? _l("هات‌اسپات فعال است! با دوربین گوشی بارکد را اسکن کنید.", "Wi-Fi Hotspot активен! Отсканируйте QR-код для подключения.", "Wi-Fi Hotspot Active! Scan with camera to connect.") : _l("پروکسی فعال است! بارکد را برای اتصال تلگرام اسکن کنید.", "Локальный прокси активен! Отсканируйте QR-код для настройки Telegram.", "Proxy Active! Scan QR code to connect Telegram."),
                       style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE)),
                       textAlign: TextAlign.center,
                     ),
@@ -6450,7 +6543,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                         const Icon(Icons.router_rounded, color: Color(0xFF00F2FE), size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          isFa ? "مشخصات پروکسی محلی (Local Proxy)" : "Local Proxy Connection Details",
+                          _l("مشخصات پروکسی محلی (Local Proxy)", "Параметры локального прокси (Local Proxy)", "Local Proxy Connection Details"),
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                       ],
@@ -6468,14 +6561,14 @@ class _LanShareScreenState extends State<LanShareScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(isFa ? "آی‌پی سیستم (Proxy Host):" : "Proxy Host (Local IP):", style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
+                              Text(_l("آی‌پی سیستم (Proxy Host):", "IP-адрес (Proxy Host):", "Proxy Host (Local IP):"), style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
                               Text(_localIp, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'monospace')),
                             ],
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text(isFa ? "پورت‌ها (SOCKS / HTTP):" : "LAN Ports:", style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
+                              Text(_l("پورت‌ها (SOCKS / HTTP):", "Порты (SOCKS / HTTP):", "LAN Ports:"), style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
                               Text("$_socksPort / $_httpPort", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE), fontFamily: 'monospace')),
                             ],
                           ),
@@ -6487,7 +6580,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _copyToClipboard("$_localIp:$_socksPort", isFa ? "آدرس IP:Port کپی شد!" : "IP:Port Copied!"),
+                            onPressed: () => _copyToClipboard("$_localIp:$_socksPort", _l("آدرس IP:Port کپی شد!", "Адрес IP:Port скопирован!", "IP:Port Copied!")),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1E293B),
                               foregroundColor: Colors.white,
@@ -6495,13 +6588,13 @@ class _LanShareScreenState extends State<LanShareScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             icon: const Icon(Icons.copy_rounded, size: 15),
-                            label: Text(isFa ? "کپی IP:Port" : "Copy IP:Port", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: Text(_l("کپی IP:Port", "Скопировать IP:Port", "Copy IP:Port"), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _copyToClipboard("https://t.me/socks?server=$_localIp&port=$_socksPort", isFa ? "لینک پروکسی تلگرام کپی شد!" : "Telegram Proxy Link Copied!"),
+                            onPressed: () => _copyToClipboard("https://t.me/socks?server=$_localIp&port=$_socksPort", _l("لینک پروکسی تلگرام کپی شد!", "Ссылка на прокси Telegram скопирована!", "Telegram Proxy Link Copied!")),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF00F2FE).withOpacity(0.2),
                               foregroundColor: const Color(0xFF00F2FE),
@@ -6510,7 +6603,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                             icon: const Icon(Icons.send_rounded, size: 15),
-                            label: Text(isFa ? "پروکسی تلگرام" : "Telegram Proxy", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: Text(_l("پروکسی تلگرام", "Прокси Telegram", "Telegram Proxy"), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -6544,7 +6637,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                             Icon(Icons.wifi_tethering_rounded, color: _isHotspotMode ? const Color(0xFF10B981) : Colors.grey, size: 20),
                             const SizedBox(width: 8),
                             Text(
-                              isFa ? "روتر مجازی (Virtual Hotspot)" : "Virtual Wi-Fi Hotspot",
+                              _l("روتر مجازی (Virtual Hotspot)", "Виртуальный роутер (Virtual Hotspot)", "Virtual Wi-Fi Hotspot"),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -6565,7 +6658,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isFa ? "اشتراک بدون فیلتر اینترنت از طریق وای‌فای گوشی" : "Share uncensored internet via phone Wi-Fi",
+                      _l("اشتراک بدون فیلتر اینترنت از طریق وای‌فای گوشی", "Раздача интернета без блокировок через Wi-Fi", "Share uncensored internet via phone Wi-Fi"),
                       style: const TextStyle(fontSize: 10.5, color: Colors.grey),
                     ),
                     const SizedBox(height: 12),
@@ -6576,7 +6669,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                             controller: _ssidController,
                             style: const TextStyle(fontSize: 12, color: Colors.white),
                             decoration: InputDecoration(
-                              labelText: isFa ? "نام هات‌اسپات (SSID)" : "Hotspot Name (SSID)",
+                              labelText: _l("نام هات‌اسپات (SSID)", "Имя сети (SSID)", "Hotspot Name (SSID)"),
                               labelStyle: const TextStyle(fontSize: 11, color: Colors.grey),
                               prefixIcon: const Icon(Icons.wifi, size: 16, color: Color(0xFF10B981)),
                               filled: true,
@@ -6593,7 +6686,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                             obscureText: !_showPassword,
                             style: const TextStyle(fontSize: 12, color: Colors.white),
                             decoration: InputDecoration(
-                              labelText: isFa ? "رمز عبور" : "Password",
+                              labelText: _l("رمز عبور", "Пароль", "Password"),
                               labelStyle: const TextStyle(fontSize: 11, color: Colors.grey),
                               prefixIcon: const Icon(Icons.lock_rounded, size: 16, color: Color(0xFF10B981)),
                               suffixIcon: IconButton(
@@ -6642,7 +6735,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                           icon: const Icon(Icons.settings_remote_rounded, size: 16),
-                          label: Text(isFa ? "تنظیمات هات‌اسپات" : "Hotspot Settings", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: Text(_l("تنظیمات هات‌اسپات", "Настройки Hotspot", "Hotspot Settings"), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -6658,7 +6751,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                               const Icon(Icons.flash_on_rounded, size: 16, color: Colors.amberAccent),
                               const SizedBox(width: 6),
                               Text(
-                                isFa ? "هدایت خودکار ترافیک (Transparent Routing)" : "Transparent Tethering (Root)",
+                                _l("هدایت خودکار ترافیک (Transparent Routing)", "Прозрачная маршрутизация (Root)", "Transparent Tethering (Root)"),
                                 style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white),
                               ),
                             ],
@@ -6674,7 +6767,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                         ],
                       ),
                       Text(
-                        isFa ? "عبور مستقیم تمام دستگاه‌های متصل بدون نیاز به تنظیم پروکسی" : "Forces all tethered traffic into VPN tunnel without client proxy configuration",
+                        _l("عبور مستقیم تمام دستگاه‌های متصل بدون نیاز به تنظیم پروکسی", "Автоматически направлять трафик всех подключенных устройств в VPN без настройки прокси", "Forces all tethered traffic into VPN tunnel without client proxy configuration"),
                         style: const TextStyle(fontSize: 10, color: Colors.grey),
                       ),
                     ],
@@ -6682,7 +6775,7 @@ class _LanShareScreenState extends State<LanShareScreen> {
                     // لیست زنده دستگاه‌های متصل
                     if (_connectedClients.isNotEmpty) ...[
                       const Divider(height: 20, color: Colors.white10),
-                      Text(isFa ? "دستگاه‌های متصل:" : "Connected Devices:", style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white70)),
+                      Text(_l("دستگاه‌های متصل:", "Подключенные устройства:", "Connected Devices:"), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white70)),
                       const SizedBox(height: 8),
                       ..._connectedClients.map((client) {
                         return Container(
@@ -6719,13 +6812,13 @@ class _LanShareScreenState extends State<LanShareScreen> {
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 leading: const Icon(Icons.android_rounded, color: Color(0xFF10B981), size: 20),
-                title: Text(isFa ? "راهنمای اتصال گوشی‌های دیگر و تبلت" : "Android & Tablet Setup Guide", style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                title: Text(_l("راهنمای اتصال گوشی‌های دیگر و تبلت", "Инструкция для Android и планшетов", "Android & Tablet Setup Guide"), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
                       isFa
-                          ? "۱. به هات‌اسپات گوشی یا همان وای‌فای مشترک وصل شوید.\n۲. تنظیمات وای‌فای را باز کرده و Proxy را روی Manual بگذارید.\n۳. هاست را $_localIp و پورت را $_httpPort یا $_socksPort وارد کنید."
+                          ? _l("۱. به هات‌اسپات گوشی یا همان وای‌فای مشترک وصل شوید.\n۲. تنظیمات وای‌فای را باز کرده و Proxy را روی Manual بگذارید.\n۳. هاست را $_localIp و پورت را $_httpPort یا $_socksPort وارد کنید.", "1. Подключитесь к Wi-Fi сети телефона.\n2. Откройте настройки Wi-Fi и установиته Proxy на Manual (Вручную).\n3. Введите Host: $_localIp و Port: $_httpPort или $_socksPort.", "1. Connect to phone Wi-Fi hotspot.\n2. Open Wi-Fi settings and set Proxy to Manual.\n3. Set Host to $_localIp and Port to $_httpPort or $_socksPort.")
                           : "1. Connect to phone hotspot or same Wi-Fi.\n2. In Wi-Fi settings, set Proxy to Manual.\n3. Enter Host: $_localIp and Port: $_httpPort",
                       style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.5),
                     ),
@@ -6735,13 +6828,13 @@ class _LanShareScreenState extends State<LanShareScreen> {
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 leading: const Icon(Icons.apple_rounded, color: Colors.white, size: 20),
-                title: Text(isFa ? "راهنمای اتصال آیفون و آیپد (iOS)" : "iPhone & iPad Guide (iOS)", style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                title: Text(_l("راهنمای اتصال آیفون و آیپد (iOS)", "Инструкция для iPhone и iPad (iOS)", "iPhone & iPad Guide (iOS)"), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
                       isFa
-                          ? "۱. به هات‌اسپات وصل شوید.\n۲. دکمه (i) کنار نام وای‌فای را بزنید و در پایین صفحه Configure Proxy را روی Manual قرار دهید.\n۳. Server: $_localIp و Port: $_httpPort را ذخیره کنید."
+                          ? _l("۱. به هات‌اسپات وصل شوید.\n۲. دکمه (i) کنار نام وای‌فای را بزنید و در پایین صفحه Configure Proxy را روی Manual قرار دهید.\n۳. Server: $_localIp و Port: $_httpPort را ذخیره کنید.", "1. Подключитесь к Wi-Fi сети.\n2. Нажмите (i) рядом с именем Wi-Fi и внизу выберите Настройка прокси -> Вручную.\n3. Укажите Сервер: $_localIp و Порт: $_httpPort.", "1. Connect to Wi-Fi.\n2. Tap (i) next to Wi-Fi name, select Configure Proxy -> Manual.\n3. Enter Server: $_localIp and Port: $_httpPort.")
                           : "1. Connect to Wi-Fi, tap (i) icon.\n2. Tap Configure Proxy -> Manual.\n3. Server: $_localIp, Port: $_httpPort.",
                       style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.5),
                     ),
@@ -6751,13 +6844,13 @@ class _LanShareScreenState extends State<LanShareScreen> {
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 leading: const Icon(Icons.tv_rounded, color: Color(0xFF00F2FE), size: 20),
-                title: Text(isFa ? "راهنمای تلویزیون هوشمند و کنسول (PS5/Xbox/TV)" : "Smart TV & Gaming Console Guide", style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                title: Text(_l("راهنمای تلویزیون هوشمند و کنسول (PS5/Xbox/TV)", "Инструкция для Smart TV и консолей (PS5/Xbox/TV)", "Smart TV & Gaming Console Guide"), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
                       isFa
-                          ? "در بخش Network Settings کنسول یا تلویزیون، پروکسی را روی Manual گذاشته و آدرس $_localIp:$_httpPort را وارد کنید تا یوتیوب و بازی‌ها بدون فیلتر لود شوند."
+                          ? _l("در بخش Network Settings کنسول یا تلویزیون، پروکسی را روی Manual گذاشته و آدرس $_localIp:$_httpPort را وارد کنید تا یوتیوب و بازی‌ها بدون فیلتر لود شوند.", "В настройках сети (Network Settings) консоли или ТВ выберите Manual Proxy и укажите $_localIp:$_httpPort.", "In Network Settings of console or TV, set Proxy to Manual and enter $_localIp:$_httpPort.")
                           : "In console/TV network settings, enable proxy with IP: $_localIp and Port: $_httpPort to enjoy free internet.",
                       style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.5),
                     ),
@@ -6786,6 +6879,12 @@ class SplitTunnelScreen extends StatefulWidget {
 }
 
 class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
   static const MethodChannel _lanChannel = MethodChannel('com.redcloud.vpn/lan_channel');
 
   bool _isEnabled = false;
@@ -6878,7 +6977,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
     _saveSettings();
     final msg = widget.currentLang == "ru"
         ? "Российские и банковские приложения успешно выбраны."
-        : (widget.currentLang == "fa" ? "برنامه‌های بانکی و داخلی با موفقیت انتخاب شدند." : "Banking and local apps selected.");
+        : _l("برنامه‌های بانکی و داخلی با موفقیت انتخاب شدند.", "Банковские и российские приложения успешно выбраны.", "Banking and domestic apps selected.");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -6918,7 +7017,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: Text(
-              isFa ? "تونل انتخابی برنامه‌ها" : "Split Tunneling",
+              _l("تونل انتخابی برنامه‌ها", "Раздельное туннелирование", "Split Tunneling"),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             centerTitle: true,
@@ -6957,7 +7056,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                               Icon(Icons.alt_route_rounded, color: _isEnabled ? const Color(0xFF00F2FE) : Colors.grey, size: 22),
                               const SizedBox(width: 10),
                               Text(
-                                isFa ? "فعال‌سازی تونل انتخابی" : "Enable Split Tunneling",
+                                _l("فعال‌سازی تونل انتخابی", "Включить раздельное туннелирование", "Enable Split Tunneling"),
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.bold,
@@ -7005,7 +7104,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                     Icon(Icons.do_not_disturb_on_rounded, color: _mode == "bypass" ? const Color(0xFF10B981) : Colors.grey, size: 20),
                                     const SizedBox(height: 4),
                                     Text(
-                                      isFa ? "بایپس برنامه‌ها" : "Bypass Apps",
+                                      _l("بایپس برنامه‌ها", "Исключения (Bypass Apps)", "Bypass Apps"),
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
@@ -7014,7 +7113,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      isFa ? "مستقیم (بانک‌ها و اسنپ)" : "Direct (Bypass VPN)",
+                                      _l("مستقیم (بانک‌ها و اسنپ)", "Прямой доступ (без VPN)", "Direct (Bypass VPN)"),
                                       style: const TextStyle(fontSize: 9.5, color: Colors.grey),
                                       textAlign: TextAlign.center,
                                     ),
@@ -7046,7 +7145,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                     Icon(Icons.vpn_lock_rounded, color: _mode == "proxy_only" ? const Color(0xFF00F2FE) : Colors.grey, size: 20),
                                     const SizedBox(height: 4),
                                     Text(
-                                      isFa ? "فقط پروکسی" : "Proxy Only",
+                                      _l("فقط پروکسی", "Только проکسی (Proxy Only)", "Proxy Only"),
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
@@ -7055,7 +7154,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      isFa ? "فقط برنامه‌های تیک‌خورده" : "Only selected apps",
+                                      _l("فقط برنامه‌های تیک‌خورده", "Только выбранные приложения", "Only selected apps"),
                                       style: const TextStyle(fontSize: 9.5, color: Colors.grey),
                                       textAlign: TextAlign.center,
                                     ),
@@ -7079,7 +7178,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                               onChanged: (val) => setState(() => _searchQuery = val.toLowerCase().trim()),
                               style: const TextStyle(fontSize: 12, color: Colors.white),
                               decoration: InputDecoration(
-                                hintText: isFa ? "جستجوی نام برنامه..." : "Search apps...",
+                                hintText: _l("جستجوی نام برنامه...", "Поиск приложения...", "Search apps..."),
                                 hintStyle: const TextStyle(fontSize: 11.5, color: Colors.grey),
                                 prefixIcon: const Icon(Icons.search, size: 18, color: Colors.grey),
                                 filled: true,
@@ -7096,12 +7195,12 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                               color: _includeSystemApps ? const Color(0xFF00F2FE) : Colors.grey,
                               size: 22,
                             ),
-                            tooltip: isFa ? "نمایش برنامه‌های سیستمی" : "Toggle System Apps",
+                            tooltip: _l("نمایش برنامه‌های سیستمی", "Показывать системные приложения", "Toggle System Apps"),
                             onPressed: () => setState(() => _includeSystemApps = !_includeSystemApps),
                           ),
                           IconButton(
                             icon: const Icon(Icons.auto_awesome_rounded, color: Colors.amberAccent, size: 22),
-                            tooltip: isFa ? "انتخاب خودکار بانک‌ها و برنامه‌های ایرانی" : "Auto select banking apps",
+                            tooltip: _l("انتخاب خودکار بانک‌ها و برنامه‌های ایرانی", "Автовыбор банков и российских сервисов", "Auto select banking apps"),
                             onPressed: _selectRecommendedIranianApps,
                           ),
                         ],
@@ -7116,7 +7215,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                         children: [
                           Text(
                             isFa 
-                                ? "انتخاب شده: ${_selectedPackages.length} برنامه" 
+                                ? _l("انتخاب شده: ${_selectedPackages.length} برنامه", "Выбрано: ${_selectedPackages.length}", "Selected: ${_selectedPackages.length} apps")
                                 : "Selected: ${_selectedPackages.length} apps",
                             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE)),
                           ),
@@ -7127,7 +7226,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                 _saveSettings();
                               },
                               child: Text(
-                                isFa ? "پاک کردن انتخاب‌ها" : "Clear all",
+                                _l("پاک کردن انتخاب‌ها", "Сбросить выбор", "Clear all"),
                                 style: const TextStyle(fontSize: 11, color: Colors.redAccent),
                               ),
                             ),
@@ -7243,6 +7342,12 @@ class ServersManagementScreen extends StatefulWidget {
 }
 
 class _ServersManagementScreenState extends State<ServersManagementScreen> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   int _selectedFilterTab = 0; // 0: All, 1: Subscriptions, 2: Manual & Custom
@@ -7377,7 +7482,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
     setState(() => _isTestingPing = false);
     _saveServersData();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("تست پینگ به پایان رسید و سرورها مرتب شدند."), duration: Duration(seconds: 2)),
+      SnackBar(content: Text(_l("تست پینگ به پایان رسید و سرورها مرتب شدند.", "Проверка пинга завершена, серверы отсортированы.", "Ping test completed, servers sorted.")), duration: const Duration(seconds: 2)),
     );
   }
 
@@ -7411,7 +7516,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF101726),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFF00F2FE))),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.add_link_rounded, color: Color(0xFF00F2FE)),
             SizedBox(width: 8),
@@ -7422,12 +7527,12 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
           controller: subController,
           style: const TextStyle(fontSize: 12),
           decoration: const InputDecoration(
-            hintText: "https://.../sub (مرزبان، ثنایی، ...)",
+            hintText: "https://.../sub (Marzban, 3X-UI...)",
             hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("انصراف", style: TextStyle(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_l("انصراف", "Отмена", "Cancel"), style: const TextStyle(color: Colors.grey))),
           ElevatedButton(
             onPressed: () async {
               final url = subController.text.trim();
@@ -7437,7 +7542,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00F2FE), foregroundColor: Colors.black),
-            child: const Text("افزودن و بروزرسانی"),
+            child: Text(_l("افزودن و بروزرسانی", "Добавить и обновить", "Add & Update")),
           ),
         ],
       ),
@@ -7517,7 +7622,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
   }
 
   Future<void> _fetchSubscription(String url) async {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("در حال دریافت کانفیگ‌های سابسکریپشن...")));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("در حال دریافت کانفیگ‌های سابسکریپشن...", "Получение конфигураций подписки...", "Fetching subscription configs..."))));
     try {
       final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
       final req = await client.getUrl(Uri.parse(url));
@@ -7550,11 +7655,11 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
         setState(() {});
         _saveServersData();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("تعداد $added سرور با موفقیت اضافه شد.")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("تعداد $added سرور با موفقیت اضافه شد.", "Успешно добавлено серверов: $added.", "Successfully added $added servers."))));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("خطا در دریافت سابسکریپشن: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("خطا در دریافت سابسکریپشن: $e", "Ошибка загрузки подписки: $e", "Failed to fetch subscription: $e"))));
     }
   }
 
@@ -7565,7 +7670,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF101726),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFF10B981))),
-        title: const Row(
+        title: Row(
           children: [
             Icon(Icons.add_box_rounded, color: Color(0xFF10B981)),
             SizedBox(width: 8),
@@ -7599,14 +7704,14 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                   newServer["id"] = "manual_${DateTime.now().millisecondsSinceEpoch}";
                   setState(() => _servers.add(newServer));
                   _saveServersData();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("کانفیگ با موفقیت اضافه شد.")));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("کانفیگ با موفقیت اضافه شد.", "Конфигурация успешно добавлена.", "Config successfully added."))));
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("فرمت لینک کانفیگ نامعتبر است.")));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("فرمت لینک کانفیگ نامعتبر است.", "Неверный формат ссылки на конфигурацию.", "Invalid config link format."))));
                 }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.black),
-            child: const Text("افزودن"),
+            child: Text(_l("افزودن", "Добавить", "Add")),
           ),
         ],
       ),
@@ -7763,7 +7868,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
           // لیست کارت‌های سرور دقیقاً مشابه ویندوز
           Expanded(
             child: filtered.isEmpty
-                ? const Center(child: Text("هیچ سروری یافت نشد.", style: TextStyle(color: Colors.grey, fontSize: 12)))
+                ? Center(child: Text(_l("هیچ سروری یافت نشد.", "Серверы не найдены.", "No servers found."), style: const TextStyle(color: Colors.grey, fontSize: 12)))
                 : ListView.builder(
                     itemCount: filtered.length,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -7865,7 +7970,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                               onPressed: () {
                                 final link = s['rawLink'] ?? _buildVlessLink(s);
                                 Clipboard.setData(ClipboardData(text: link));
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("لینک کانفیگ کپی شد!")));
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("لینک کانفیگ کپی شد!", "Ссылка на конфигурацию скопирована!", "Config link copied!"))));
                               },
                             ),
 
@@ -7916,15 +8021,22 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
 // =========================================================================
 class EditServerModal extends StatefulWidget {
   final Map<String, dynamic>? server;
+  final String currentLang;
   final Function(Map<String, dynamic>) onSave;
 
-  const EditServerModal({super.key, this.server, required this.onSave});
+  const EditServerModal({super.key, this.server, this.currentLang = "ru", required this.onSave});
 
   @override
   State<EditServerModal> createState() => _EditServerModalState();
 }
 
 class _EditServerModalState extends State<EditServerModal> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
   late TextEditingController _nameController;
   late TextEditingController _addressController;
   late TextEditingController _portController;
@@ -8017,8 +8129,7 @@ class _EditServerModalState extends State<EditServerModal> {
               children: [
                 const Icon(Icons.edit_note_rounded, color: Color(0xFFC084FC), size: 22),
                 const SizedBox(width: 8),
-                const Text(
-                  "Edit Server Configuration (VLESS / Trojan / VMESS)",
+                Text(_l("ویرایش کانفیگ سرور", "Редактирование конфигурации сервера", "Edit Server Configuration"),
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ],
@@ -8028,7 +8139,7 @@ class _EditServerModalState extends State<EditServerModal> {
             // پروتکل اتصال
             Row(
               children: [
-                const Text("Connection Protocol:", style: TextStyle(fontSize: 11.5, color: Colors.grey)),
+                Text(_l("پروتکل اتصال:", "Протокол подключения:", "Connection Protocol:"), style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
                 const SizedBox(width: 12),
                 DropdownButton<String>(
                   value: _protocol,
@@ -8042,22 +8153,22 @@ class _EditServerModalState extends State<EditServerModal> {
             ),
             const SizedBox(height: 8),
 
-            _buildField(label: "Alias / Remarks", controller: _nameController),
+            _buildField(label: _l("نام / برچسب سرور", "Название / Метка сервера", "Alias / Remarks"), controller: _nameController),
 
             Row(
               children: [
-                Expanded(flex: 3, child: _buildField(label: "Server Address", controller: _addressController)),
+                Expanded(flex: 3, child: _buildField(label: _l("آدرس سرور", "Адрес сервера", "Server Address"), controller: _addressController)),
                 const SizedBox(width: 8),
-                Expanded(flex: 1, child: _buildField(label: "Port", controller: _portController, isNumber: true)),
+                Expanded(flex: 1, child: _buildField(label: _l("پورت", "Порт", "Port"), controller: _portController, isNumber: true)),
               ],
             ),
 
-            _buildField(label: "UUID / Password", controller: _uuidController),
+            _buildField(label: _l("شناسه / رمز عبور (UUID)", "UUID / Пароль", "UUID / Password"), controller: _uuidController),
 
             // پروتکل انتقال
             Row(
               children: [
-                const Text("Transport Protocol:", style: TextStyle(fontSize: 11.5, color: Colors.grey)),
+                Text(_l("پروتکل انتقال:", "Протокол транспорта:", "Transport Protocol:"), style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
                 const SizedBox(width: 12),
                 DropdownButton<String>(
                   value: _transport,
@@ -8071,15 +8182,15 @@ class _EditServerModalState extends State<EditServerModal> {
             ),
             const SizedBox(height: 8),
 
-            _buildField(label: "WebSocket Host", controller: _wsHostController),
-            _buildField(label: "WebSocket Path", controller: _wsPathController),
+            _buildField(label: _l("هاست WebSocket", "WebSocket Host", "WebSocket Host"), controller: _wsHostController),
+            _buildField(label: _l("مسیر WebSocket", "WebSocket Path", "WebSocket Path"), controller: _wsPathController),
 
-            const Text("TLS & Reality Security Settings", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFC084FC))),
+            Text(_l("تنظیمات امنیتی TLS و Reality", "Настройки безопасности TLS & Reality", "TLS & Reality Security Settings"), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFC084FC))),
             const SizedBox(height: 8),
 
             Row(
               children: [
-                const Text("Security Type:", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(_l("نوع امنیت:", "Тип безопасности:", "Security Type:"), style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 const SizedBox(width: 8),
                 DropdownButton<String>(
                   value: _security,
@@ -8090,7 +8201,7 @@ class _EditServerModalState extends State<EditServerModal> {
                   items: ["TLS", "NONE", "REALITY"].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                 ),
                 const SizedBox(width: 12),
-                const Text("Fingerprint:", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(_l("отпечаток (Fingerprint):", "Отпечаток (Fingerprint):", "Fingerprint:"), style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 const SizedBox(width: 6),
                 DropdownButton<String>(
                   value: _fingerprint,
@@ -8103,12 +8214,12 @@ class _EditServerModalState extends State<EditServerModal> {
               ],
             ),
 
-            _buildField(label: "Server Name (SNI / Peer)", controller: _sniController),
+            _buildField(label: _l("نام سرور (SNI / Peer)", "Имя сервера (SNI / Peer)", "Server Name (SNI / Peer)"), controller: _sniController),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Allow Insecure Certificates", style: TextStyle(fontSize: 11.5, color: Colors.white70)),
+                Text(_l("اجازه به گواهی‌های ناامن", "Разрешить ненадежные сертификаты", "Allow Insecure Certificates"), style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
                 Switch(
                   value: _allowInsecure,
                   activeColor: const Color(0xFFC084FC),
@@ -8117,7 +8228,7 @@ class _EditServerModalState extends State<EditServerModal> {
               ],
             ),
 
-            _buildField(label: "ECH Config List (EchConfigList)", controller: _echController),
+            _buildField(label: _l("تنظیمات ECH (EchConfigList)", "Конфигурация ECH (EchConfigList)", "ECH Config List"), controller: _echController),
 
             const SizedBox(height: 12),
             Row(
@@ -8125,7 +8236,7 @@ class _EditServerModalState extends State<EditServerModal> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                  child: Text(_l("انصراف", "Отмена", "Cancel"), style: const TextStyle(color: Colors.grey)),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
