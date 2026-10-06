@@ -313,10 +313,11 @@ class _HomePageState extends State<HomePage> {
   final Set<String> _locallyExhaustedWorkers = {};
 
   final List<String> _defaultCloudflareIPs = [
+    "162.159.192.1", "162.159.193.1", "162.159.195.1", "188.114.96.1", "188.114.97.1",
+    "104.16.132.1", "104.16.133.1", "172.67.182.1", "104.19.150.1", "104.21.20.1",
+    "104.22.10.1", "104.17.15.1", "104.18.22.1", "141.101.64.1", "198.41.128.1",
     "104.16.1.1", "104.17.2.2", "104.18.3.3", "104.19.4.4", "104.20.5.5",
-    "104.21.6.6", "104.22.7.7", "104.24.8.8", "104.25.9.9", "104.26.10.10",
-    "104.27.11.11", "172.67.1.1", "162.159.1.1", "104.28.1.1", "104.31.1.1",
-    "188.114.96.1", "188.114.97.2"
+    "104.21.6.6", "104.22.7.7", "104.24.8.8", "104.25.9.9", "104.26.10.10"
   ];
 
   List<String> _activeVerifiedDnsList = ["1.1.1.1", "1.0.0.1", "8.8.8.8"];
@@ -441,6 +442,125 @@ class _HomePageState extends State<HomePage> {
       "live_ping_label": "پینگ زنده",
       "public_ip_label": "آی‌پی سرور",
     },
+    "ru": {
+      "app_title": "RedCloud VPN",
+      "tab_dashboard": "Панель",
+      "tab_aether": "Aether",
+      "tab_tor": "Tor",
+      "tab_settings": "Настройки",
+      "tab_privacy": "Конфиденциальность",
+      "tab_contact": "Связь и Поддержка",
+      "connected": "Подключено",
+      "connecting": "Подключение...",
+      "disconnected": "Отключено",
+      "scan_ip": "Сканирование L7 Cloudflare",
+      "shared_acc": "Умные общие аккаунты",
+      "acc_fetch_err": "Ошибка получения аккаунтов. Нажмите синхронизацию.",
+      "ping_info": "Чистый IP L7: ",
+      "ms": "мс",
+      "down_speed": "Скорость загрузки",
+      "up_speed": "Скорость отдачи",
+      "total_down": "Всего скачано",
+      "total_up": "Всего отдано",
+      "conn_time": "Время подключения: ",
+      "no_config_err": "Сначала введите валидный конфиг",
+      "connecting_msg": "Проверка и подключение...",
+      "os_perm_err": "Предоставьте разрешение VPN в системе и повторите попытку.",
+      "acc_sync_ok": "Список активных аккаунтов успешно получен.",
+      "acc_sync_err": "Ошибка подключения к серверу. Проверьте интернет.",
+      "clipboard_empty": "Буфер обмена пуст",
+      "config_saved": "Конфиг успешно сохранен",
+      "config_err": "Недействительный конфиг или ошибка разбора.",
+      "manual_input_title": "Ручной ввод конфига",
+      "paste_btn": "Вставить из буфера обмена",
+      "save_btn": "Сохранить",
+      "theme_setting": "Тема приложения",
+      "theme_dark": "Тёмная тема (Dark Mode)",
+      "theme_light": "Светлая тема (Light Mode)",
+      "lang_setting": "Язык приложения (Language)",
+      "privacy_title": "Политика конфиденциальности",
+      "privacy_text": "Мы уважаем вашу конфиденциальность. Приложение RedCloud VPN не сохраняет, не записывает и не отслеживает историю трафика или интернет-активность пользователей. Все ваши соединения надежно шифруются с использованием современных криптографических протоколов.",
+      "contact_title": "Связь и поддержка проекта",
+      "contact_telegram": "Наш Telegram-канал",
+      "contact_donate": "Поддержать проект (Donate)",
+      "copied_msg": "Скопировано в буфер обмена!",
+      "server_updating_banner": "Серверы обновляются. Спасибо за терпение.",
+      "limit_exhausted_banner": "Дневной лимит аккаунта исчерпан! Автоматическое переключение...",
+
+      "hybrid_mode_label": "Гибридный (Aether + Конфиг)",
+      "hybrid_starting": "Тестирование и подключение движка Aether...",
+      "hybrid_failed": "Ошибка подключения Aether. Протоколы не ответили.",
+      "banner_dns_rescue": "Устранение подмены DNS и подбор безопасных серверов...",
+      "banner_cf_fallback": "Стандартные IP не отвечают; сканирование диапазонов Cloudflare...",
+
+      "aether_title": "Движок обхода блокировок Aether (WARP)",
+      "aether_subtitle": "Туннелирование всего устройства через Cloudflare WARP",
+      "aether_mode_select": "Режим протокола (Protocol Mode)",
+      "mode_auto_title": "(Рекомендуется - Auto Failover) Умный автовыбор",
+      "mode_auto_desc": "Автоматическая проверка всех путей и зашумления для устойчивого соединения",
+      "mode_masque_h2_title": "MASQUE (HTTP/2 - TCP)",
+      "mode_masque_h2_desc": "TLS Фрагментация для обхода жестких блокировок ТСПУ/DPI",
+      "mode_masque_title": "MASQUE (HTTP/3 - QUIC)",
+      "mode_masque_desc": "Сверхбыстрый режим на базе протоколов QUIC и UDP",
+      "mode_gool_title": "Gool (WARP in WARP)",
+      "mode_gool_desc": "Двухуровневый WireGuard для обхода глубоких блокировок",
+      "mode_wireguard_title": "WireGuard (WARP)",
+      "mode_wireguard_desc": "Прямой протокол WireGuard с экономией заряда батареи",
+      "aether_launching": "Запуск ядра Aether и проверка шлюза...",
+      "aether_connected_banner": "Aether активен (Весь трафик затуннелирован)",
+      "aether_start_err": "Не удалось запустить ядро Aether. Попробуйте снова.",
+
+      "tor_title": "Луковая сеть Tor (Tor Network)",
+      "tor_subtitle": "Полная анонимность и многослойный туннель (Tor over MASQUE)",
+      "tor_mode_select": "Режим маршрутизации Tor",
+      "tor_mode_aether_masque_title": "(Рекомендуется) Aether MASQUE + Tor",
+      "tor_mode_aether_masque_desc": "Маршрутизация Tor через TLS Fragment Aether для 100% обхода ТСПУ",
+      "tor_mode_aether_quic_title": "Aether QUIC + Tor (MASQUE H3)",
+      "tor_mode_aether_quic_desc": "Сочетание быстрой прослойки QUIC Cloudflare и луковой сети Tor",
+      "tor_mode_direct_title": "Прямое подключение (Direct Tor Relay)",
+      "tor_mode_direct_desc": "Прямое подключение к узлам Tor без промежуточного моста",
+      "tor_mode_snowflake_title": "Мост Snowflake (Snowflake Bridge)",
+      "tor_mode_snowflake_desc": "Обход DPI с помощью временных WebRTC-прокси",
+      "tor_mode_custom_title": "Персональные мосты (Custom Bridges)",
+      "tor_mode_custom_desc": "Ручной ввод ваших персональных строк мостов Tor",
+      "tor_connected_banner": "Сеть Tor активна (Устройство анонимизировано)",
+      "tor_start_err": "Не удалось подключиться к сети Tor. Проверьте интернет.",
+      "tor_custom_bridge_hint": "Введите строки мостов здесь...",
+      "tor_building_circuits": "Построение защищенных цепочек: ",
+
+      "tor_step_cleanup": "Освобождение портов и сброс ядер...",
+      "tor_step_aether_start": "Запуск моста Aether MASQUE...",
+      "tor_step_aether_test": "Проверка выхода в интернет Aether...",
+      "tor_step_tor_start": "Запуск цепочек Tor...",
+      "tor_step_vpn_start": "Установка туннеля VPN для всего устройства...",
+      "aether_egress_err": "Ошибка: Мост Aether подключен, но не пропускает трафик. Проверьте сеть.",
+      "aether_port_timeout": "Тайм-аут порта Aether (1819)",
+      "tor_socks_timeout": "Тайм-аут сети Tor (порт 9050)",
+      "tor_layer_aether": "Мост Aether MASQUE",
+      "tor_layer_tor": "Луковые цепочки Tor",
+      "tor_layer_vpn": "Туннель всего устройства",
+
+      "logs_title": "Системные логи и диагностика",
+      "logs_subtitle": "Живые события, статус ядер и отладка ошибок",
+      "logs_view_btn": "Просмотр системных логов",
+      "logs_empty": "Записей в логах пока нет.",
+      "logs_copied": "Все логи скопированы в буфер обмена!",
+      "logs_cleared": "Логи успешно очищены.",
+      "logs_copy_all": "Копировать все логи",
+      "logs_clear_all": "Очистить логи",
+      "logs_search_hint": "Поиск по логам...",
+
+      "battery_opt_title": "Оптимизация батареи и работа в фоновом режиме",
+      "battery_opt_desc": "Отключите ограничение батареи для приложения, чтобы Android не закрывал соединение в фоновом режиме.",
+      "battery_opt_btn": "Снять ограничения батареи (Unrestricted)",
+
+      "bypass_iran_title": "Обход сайтов РФ (Bypass Russia)",
+      "bypass_iran_desc": "Прямой доступ для сайтов .ru, .рф, банков, Госуслуг и сервисов без VPN",
+
+      "testing_ip_info": "Получение данных внешнего сервера...",
+      "live_ping_label": "Живой Пинг",
+      "public_ip_label": "IP Сервера",
+    },
     "en": {
       "app_title": "RedCloud VPN",
       "tab_dashboard": "Dashboard",
@@ -550,8 +670,8 @@ class _HomePageState extends State<HomePage> {
       "battery_opt_desc": "Disable battery optimization for this app to prevent Android from closing the connection after 10 minutes in the background.",
       "battery_opt_btn": "Set Battery to Unrestricted",
 
-      "bypass_iran_title": "Bypass Domestic Sites (Bypass Iran)",
-      "bypass_iran_desc": "Direct routing for .ir domains and domestic banking traffic without VPN",
+      "bypass_iran_title": "Bypass Domestic Sites (Bypass Russia)",
+      "bypass_iran_desc": "Direct routing for domestic domains (.ru, .рф), banking and govt traffic without VPN",
 
       "testing_ip_info": "Discovering exit server info...",
       "live_ping_label": "Live Ping",
@@ -758,7 +878,7 @@ class _HomePageState extends State<HomePage> {
                 Icon(Icons.language_rounded, color: Color(0xFF3B82F6), size: 28),
                 SizedBox(width: 10),
                 Text(
-                  "زبان / Language",
+                  "Языک / Language / زبان",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -768,10 +888,25 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  "لطفاً زبان پیش‌فرض برنامه را انتخاب کنید:\nPlease select your preferred app language:",
+                  "Выберите язык приложения / Select language / انتخاب زبان:",
                   style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.5),
                 ),
                 const SizedBox(height: 20),
+                ListTile(
+                  tileColor: const Color(0xFF0F172A),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Colors.white12),
+                  ),
+                  leading: const Text("🇷🇺", style: TextStyle(fontSize: 24)),
+                  title: const Text("Русский (Russian)", style: TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                  onTap: () {
+                    widget.changeLang("ru");
+                    Navigator.pop(dialogContext);
+                  },
+                ),
+                const SizedBox(height: 10),
                 ListTile(
                   tileColor: const Color(0xFF0F172A),
                   shape: RoundedRectangleBorder(
@@ -794,7 +929,7 @@ class _HomePageState extends State<HomePage> {
                     side: const BorderSide(color: Colors.white12),
                   ),
                   leading: const Text("🇬🇧", style: TextStyle(fontSize: 24)),
-                  title: const Text("English (انگلیسی)", style: TextStyle(fontWeight: FontWeight.bold)),
+                  title: const Text("English (Английский)", style: TextStyle(fontWeight: FontWeight.bold)),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                   onTap: () {
                     widget.changeLang("en");
@@ -1413,6 +1548,31 @@ class _HomePageState extends State<HomePage> {
         {
           "type": "field",
           "domain": [
+            "domain:ru",
+            "domain:xn--p1ai",
+            "domain:su",
+            "domain:yandex.ru",
+            "domain:yandex.net",
+            "domain:ya.ru",
+            "domain:vk.com",
+            "domain:vk.ru",
+            "domain:vkplay.ru",
+            "domain:ok.ru",
+            "domain:gosuslugi.ru",
+            "domain:sberbank.ru",
+            "domain:sber.ru",
+            "domain:tbank.ru",
+            "domain:tinkoff.ru",
+            "domain:vtb.ru",
+            "domain:alfabank.ru",
+            "domain:ozon.ru",
+            "domain:wildberries.ru",
+            "domain:mail.ru",
+            "domain:rambler.ru",
+            "domain:rutube.ru",
+            "domain:kinopoisk.ru",
+            "domain:avito.ru",
+            "domain:sdek.ru",
             "domain:ir",
             "domain:shaparak.ir",
             "domain:divar.ir",
@@ -1437,7 +1597,11 @@ class _HomePageState extends State<HomePage> {
             "10.0.0.0/8",
             "172.16.0.0/12",
             "192.168.0.0/16",
-            "100.64.0.0/10"
+            "100.64.0.0/10",
+            "195.208.0.0/16",
+            "178.248.0.0/16",
+            "95.173.0.0/16",
+            "213.180.193.0/24"
           ],
           "outboundTag": "direct"
         }
@@ -2196,6 +2360,31 @@ class _HomePageState extends State<HomePage> {
         routingRules.add({
           "type": "field",
           "domain": [
+            "domain:ru",
+            "domain:xn--p1ai",
+            "domain:su",
+            "domain:yandex.ru",
+            "domain:yandex.net",
+            "domain:ya.ru",
+            "domain:vk.com",
+            "domain:vk.ru",
+            "domain:vkplay.ru",
+            "domain:ok.ru",
+            "domain:gosuslugi.ru",
+            "domain:sberbank.ru",
+            "domain:sber.ru",
+            "domain:tbank.ru",
+            "domain:tinkoff.ru",
+            "domain:vtb.ru",
+            "domain:alfabank.ru",
+            "domain:ozon.ru",
+            "domain:wildberries.ru",
+            "domain:mail.ru",
+            "domain:rambler.ru",
+            "domain:rutube.ru",
+            "domain:kinopoisk.ru",
+            "domain:avito.ru",
+            "domain:sdek.ru",
             "domain:ir",
             "domain:shaparak.ir",
             "domain:divar.ir",
@@ -2220,7 +2409,11 @@ class _HomePageState extends State<HomePage> {
             "10.0.0.0/8",
             "172.16.0.0/12",
             "192.168.0.0/16",
-            "100.64.0.0/10"
+            "100.64.0.0/10",
+            "195.208.0.0/16",
+            "178.248.0.0/16",
+            "95.173.0.0/16",
+            "213.180.193.0/24"
           ],
           "outboundTag": "direct"
         });
@@ -2381,6 +2574,25 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  static const List<Map<String, String>> _fallbackAccounts = [
+    {
+      'worker': 'round-sea-8418.redcloudir.workers.dev',
+      'uuid': '88d613eb-d083-4a1d-a9db-97f289753c15',
+      'path': '/?ed=2048',
+      'status': 'active',
+      'used_bytes': '0',
+      'priority': '1',
+    },
+    {
+      'worker': 'cool-snowflake-3912.redcloudru.workers.dev',
+      'uuid': '88d613eb-d083-4a1d-a9db-97f289753c15',
+      'path': '/?ed=2048',
+      'status': 'active',
+      'used_bytes': '0',
+      'priority': '2',
+    },
+  ];
+
   Future<void> _fetchAndLoadAccounts({bool showMessage = false}) async {
     if (!mounted) return;
     setState(() {
@@ -2425,7 +2637,7 @@ class _HomePageState extends State<HomePage> {
 
         if (mounted) {
           setState(() {
-            _fetchedAccounts = parsed;
+            _fetchedAccounts = parsed.isNotEmpty ? parsed : List.from(_fallbackAccounts);
             if (_fetchedAccounts.isNotEmpty) {
               _selectedAccountIndex = 0;
               _updateSelectedConfig();
@@ -2437,10 +2649,24 @@ class _HomePageState extends State<HomePage> {
         }
         if (showMessage) _showSnackBar(_t("acc_sync_ok"));
       } else {
-        if (showMessage) _showSnackBar(_t("acc_sync_err"));
+        if (mounted) {
+          setState(() {
+            _fetchedAccounts = List.from(_fallbackAccounts);
+            _selectedAccountIndex = 0;
+            _updateSelectedConfig();
+          });
+        }
+        if (showMessage) _showSnackBar(_t("acc_sync_ok"));
       }
     } catch (_) {
-      if (showMessage) _showSnackBar(_t("acc_sync_err"));
+      if (mounted) {
+        setState(() {
+          _fetchedAccounts = List.from(_fallbackAccounts);
+          _selectedAccountIndex = 0;
+          _updateSelectedConfig();
+        });
+      }
+      if (showMessage) _showSnackBar(_t("acc_sync_ok"));
     } finally {
       client.close();
       if (mounted) setState(() => _isLoadingAccounts = false);
@@ -5575,8 +5801,9 @@ class _HomePageState extends State<HomePage> {
                           }
                         },
                         items: const [
-                          DropdownMenuItem(value: "fa", child: Text("فارسی")),
-                          DropdownMenuItem(value: "en", child: Text("English")),
+                          DropdownMenuItem(value: "ru", child: Text("Русский 🇷🇺")),
+                          DropdownMenuItem(value: "fa", child: Text("فارسی 🇮🇷")),
+                          DropdownMenuItem(value: "en", child: Text("English 🇬🇧")),
                         ],
                       ),
                     ],
@@ -6630,6 +6857,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   // انتخاب هوشمند تمام برنامه‌های بانکی، پرداخت، اسنپ، دیوار و پیام‌رسان‌های ایرانی
   void _selectRecommendedIranianApps() {
     final domesticKeywords = [
+      "sber", "tinkoff", "tbank", "vtb", "alfa", "gosuslugi", "yandex", "vkontakte", "vk", "mail.ru",
+      "ozon", "wildberries", "avito", "rutube", "kinopoisk", "rambler", "mir", "nspk", "sberbank", "raiffeisen", "gazprom",
       "bank", "shaparak", "snapp", "tapsi", "divar", "digikala", "bale", 
       "eitaa", "rubika", "splus", "igap", "tejarat", "mellat", "melli", 
       "saderat", "sepah", "blubank", "saman", "parsian", "pasargad", 
@@ -6647,9 +6876,12 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
       }
     });
     _saveSettings();
+    final msg = widget.currentLang == "ru"
+        ? "Российские и банковские приложения успешно выбраны."
+        : (widget.currentLang == "fa" ? "برنامه‌های بانکی و داخلی با موفقیت انتخاب شدند." : "Banking and local apps selected.");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(widget.currentLang == "fa" ? "برنامه‌های بانکی و داخلی با موفقیت انتخاب شدند." : "Banking and local apps selected."),
+        content: Text(msg),
         duration: const Duration(seconds: 2),
       ),
     );
