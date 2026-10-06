@@ -618,7 +618,7 @@ class MainActivity : FlutterActivity() {
                 if (snowflakePath != null) {
                     torrcContent.append("UseBridges 1\n")
                     torrcContent.append("ClientTransportPlugin snowflake exec $snowflakePath\n")
-                    torrcContent.append("Bridge snowflake 192.0.2.3:1 2B280B23E1107BB62ABFC40DDCC82248C5EC2F6E\n")
+                    torrcContent.append("Bridge snowflake 192.0.2.3:1 2B280B23E1107BB62ABFC40DDCC82248C5EC2F6E url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net ice=stun:stun.l.google.com:19302,stun:stun.voipstall.com:3478,stun:stun.cloudflare.com:3478\n")
                     appendNativeLog("TorConfig", "پلاگین Snowflake فعال شد.")
                 }
             }
@@ -627,6 +627,7 @@ class MainActivity : FlutterActivity() {
                 if (obfsPath != null) {
                     torrcContent.append("UseBridges 1\n")
                     torrcContent.append("ClientTransportPlugin obfs4 exec $obfsPath\n")
+                    torrcContent.append("Bridge obfs4 193.218.118.172:443 2C3D32B877B6D1B50D11E0281F19AC9A91D6E73B cert=8bB9qM32f+P4O6y1Sg71w7k+eU01s4J2y3z4s5t6v7w iat-mode=0\n")
                     appendNativeLog("TorConfig", "پلاگین obfs4 فعال شد.")
                 }
             }
@@ -905,9 +906,9 @@ class MainActivity : FlutterActivity() {
                 command.add("--h2")
                 command.add("--fragment")
                 command.add("--fragment-size")
-                command.add("16-32")
+                command.add("10-24")
                 command.add("--fragment-delay")
-                command.add("2-8")
+                command.add("1-5")
                 command.add("--noize")
                 command.add(customNoize ?: "firewall")
                 command.add("--turbo")
