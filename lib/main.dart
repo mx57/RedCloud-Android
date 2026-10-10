@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,7 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const String workerApiUrl = "https://round-sea-8418.redcloudir.workers.dev";
-const String githubRawUrl = "https://raw.githubusercontent.com/Devtahas/Devtahas-redcloud-config/main/accounts.json";
+const String githubRawUrl =
+    "https://raw.githubusercontent.com/Devtahas/Devtahas-redcloud-config/main/accounts.json";
 const String telegramChannelUrl = "https://t.me/DevTaha_project";
 const String usdtBnbAddress = "0xDeda28Aa73Ec089A77B3fC616E0011a8fce12900";
 const String appPackageName = "com.redcloud.vpn.redcloud_android";
@@ -65,10 +67,10 @@ class AppLogger {
   }
 
   static void addNativeLog(String rawLine) {
-    final isErr = rawLine.toLowerCase().contains("error") || 
-                  rawLine.toLowerCase().contains("fail") || 
-                  rawLine.toLowerCase().contains("crash") ||
-                  rawLine.toLowerCase().contains("aborted");
+    final isErr = rawLine.toLowerCase().contains("error") ||
+        rawLine.toLowerCase().contains("fail") ||
+        rawLine.toLowerCase().contains("crash") ||
+        rawLine.toLowerCase().contains("aborted");
     final entry = LogEntry(
       time: DateTime.now(),
       tag: "NATIVE",
@@ -184,7 +186,8 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         useMaterial3: true,
         brightness: _isDarkMode ? Brightness.dark : Brightness.light,
-        scaffoldBackgroundColor: _isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+        scaffoldBackgroundColor:
+            _isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blueAccent,
           brightness: _isDarkMode ? Brightness.dark : Brightness.light,
@@ -217,6 +220,18 @@ class HomePage extends StatefulWidget {
     required this.changeLang,
   });
 
+  static String formatBytes(int bytes, {bool isSpeed = false}) {
+    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
+    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
+    int i = 0;
+    double num = bytes.toDouble();
+    while (num >= 1024 && i < suffixes.length - 1) {
+      num /= 1024;
+      i++;
+    }
+    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
+  }
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -228,12 +243,16 @@ class _HomePageState extends State<HomePage> {
     return en;
   }
 
-  static const MethodChannel _aetherChannel = MethodChannel('com.redcloud.vpn/aether_channel');
-  static const MethodChannel _torChannel = MethodChannel('com.redcloud.vpn/tor_channel');
-  static const MethodChannel _lanChannel = MethodChannel('com.redcloud.vpn/lan_channel');
+  static const MethodChannel _aetherChannel =
+      MethodChannel('com.redcloud.vpn/aether_channel');
+  static const MethodChannel _torChannel =
+      MethodChannel('com.redcloud.vpn/tor_channel');
+  static const MethodChannel _lanChannel =
+      MethodChannel('com.redcloud.vpn/lan_channel');
 
-  final ValueNotifier<V2RayStatus> v2rayStatus = ValueNotifier<V2RayStatus>(V2RayStatus());
-  
+  final ValueNotifier<V2RayStatus> v2rayStatus =
+      ValueNotifier<V2RayStatus>(V2RayStatus());
+
   ActiveEngine _activeEngine = ActiveEngine.none;
   bool _isTransitioning = false;
   bool _bypassIran = true;
@@ -253,23 +272,27 @@ class _HomePageState extends State<HomePage> {
   String? _ipFlagEmoji;
   int? _realPingMs;
   bool _isTestingIp = false;
-  
+
   late final V2ray flutterV2ray = V2ray(
     onStatusChanged: (status) {
       v2rayStatus.value = status;
       if (status.state == "CONNECTED" && _activeEngine != ActiveEngine.none) {
         if (_publicIp == null && !_isTestingIp) {
           Timer(const Duration(milliseconds: 1500), () {
-            if (mounted && _activeEngine != ActiveEngine.none && !_isTestingIp) {
+            if (mounted &&
+                _activeEngine != ActiveEngine.none &&
+                !_isTestingIp) {
               _fetchPublicIpAndPing();
             }
           });
         }
       }
 
-      if (_activeEngine == ActiveEngine.dashboard && status.state == "CONNECTED" && _selectedAccountIndex >= 0) {
+      if (_activeEngine == ActiveEngine.dashboard &&
+          status.state == "CONNECTED" &&
+          _selectedAccountIndex >= 0) {
         _checkAndAutoSwitchLimit(
-          _fetchedAccounts[_selectedAccountIndex], 
+          _fetchedAccounts[_selectedAccountIndex],
           status.download + status.upload,
         );
       }
@@ -278,13 +301,13 @@ class _HomePageState extends State<HomePage> {
 
   final TextEditingController _configController = TextEditingController();
   final TextEditingController _customBridgeController = TextEditingController();
-  
+
   List<Map<String, String>> _fetchedAccounts = [];
   int _selectedAccountIndex = -1;
   bool _isLoadingAccounts = false;
   bool _isScanningIPs = false;
   bool _serversUpdatingMode = false;
-  
+
   String _fastestIP = "104.18.0.14";
   int _bestPing = 0;
 
@@ -306,7 +329,8 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _fetchAtcInfo() async {
     try {
-      final dynamic info = await _aetherChannel.invokeMethod('getAtcAccountInfo');
+      final dynamic info =
+          await _aetherChannel.invokeMethod('getAtcAccountInfo');
       if (info is Map && mounted) {
         setState(() {
           _atcAccountName = info['account']?.toString() ?? "";
@@ -315,6 +339,7 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (_) {}
   }
+
   String _torStepStatus = "";
   int _torCurrentStep = 0;
 
@@ -337,11 +362,31 @@ class _HomePageState extends State<HomePage> {
   final Set<String> _locallyExhaustedWorkers = {};
 
   final List<String> _defaultCloudflareIPs = [
-    "162.159.192.1", "162.159.193.1", "162.159.195.1", "188.114.96.1", "188.114.97.1",
-    "104.16.132.1", "104.16.133.1", "172.67.182.1", "104.19.150.1", "104.21.20.1",
-    "104.22.10.1", "104.17.15.1", "104.18.22.1", "141.101.64.1", "198.41.128.1",
-    "104.16.1.1", "104.17.2.2", "104.18.3.3", "104.19.4.4", "104.20.5.5",
-    "104.21.6.6", "104.22.7.7", "104.24.8.8", "104.25.9.9", "104.26.10.10"
+    "162.159.192.1",
+    "162.159.193.1",
+    "162.159.195.1",
+    "188.114.96.1",
+    "188.114.97.1",
+    "104.16.132.1",
+    "104.16.133.1",
+    "172.67.182.1",
+    "104.19.150.1",
+    "104.21.20.1",
+    "104.22.10.1",
+    "104.17.15.1",
+    "104.18.22.1",
+    "141.101.64.1",
+    "198.41.128.1",
+    "104.16.1.1",
+    "104.17.2.2",
+    "104.18.3.3",
+    "104.19.4.4",
+    "104.20.5.5",
+    "104.21.6.6",
+    "104.22.7.7",
+    "104.24.8.8",
+    "104.25.9.9",
+    "104.26.10.10"
   ];
 
   List<String> _activeVerifiedDnsList = ["1.1.1.1", "1.0.0.1", "8.8.8.8"];
@@ -370,7 +415,8 @@ class _HomePageState extends State<HomePage> {
       "conn_time": "زمان اتصال: ",
       "no_config_err": "لطفاً ابتدا یک کانفیگ معتبر وارد کنید",
       "connecting_msg": "در حال بررسی و اتصال...",
-      "os_perm_err": "لطفاً تاییدیه کادر سیستم‌عامل را بدهید و مجدداً دکمه اتصال را بزنید.",
+      "os_perm_err":
+          "لطفاً تاییدیه کادر سیستم‌عامل را بدهید و مجدداً دکمه اتصال را بزنید.",
       "acc_sync_ok": "لیست اکانت‌های فعال با موفقیت دریافت و فیلتر شدند.",
       "acc_sync_err": "خطا در ارتباط با سرور؛ اینترنت خود را چک کنید.",
       "clipboard_empty": "حافظه موقت سیستم شما خالی است",
@@ -384,67 +430,78 @@ class _HomePageState extends State<HomePage> {
       "theme_light": "حالت روشن (Light Mode)",
       "lang_setting": "زبان برنامه (Language)",
       "privacy_title": "بیانیه حریم خصوصی",
-      "privacy_text": "ما به حریم خصوصی شما احترام می‌گذاریم. اپلیکیشن RedCloud VPN هیچ‌گونه اطلاعات، لاگ یا تاریخچه ترافیکی از فعالیت‌های اینترنتی کاربران خود ذخیره یا رصد نمی‌کند. تمامی ارتباطات شما از طریق پروتکل‌های امن و کلیدهای رمزنگاری پیشرفته به صورت کاملاً کدگذاری‌شده عبور داده می‌شود.",
+      "privacy_text":
+          "ما به حریم خصوصی شما احترام می‌گذاریم. اپلیکیشن RedCloud VPN هیچ‌گونه اطلاعات، لاگ یا تاریخچه ترافیکی از فعالیت‌های اینترنتی کاربران خود ذخیره یا رصد نمی‌کند. تمامی ارتباطات شما از طریق پروتکل‌های امن و کلیدهای رمزنگاری پیشرفته به صورت کاملاً کدگذاری‌شده عبور داده می‌شود.",
       "contact_title": "ارتباط با ما و حمایت مالی",
       "contact_telegram": "کانال تلگرام ما",
       "contact_donate": "حمایت مالی (Donate)",
       "copied_msg": "در حافظه موقت کپی شد!",
-      "server_updating_banner": "سرورها در حال آپدیت هستند. از شکیبایی شما متشکریم.",
-      "limit_exhausted_banner": "مصرف روزانه اکانت به پایان رسید! در حال تعویض خودکار...",
-      
+      "server_updating_banner":
+          "سرورها در حال آپدیت هستند. از شکیبایی شما متشکریم.",
+      "limit_exhausted_banner":
+          "مصرف روزانه اکانت به پایان رسید! در حال تعویض خودکار...",
       "hybrid_mode_label": "هیبریدی (اتر + کانفیگ)",
       "hybrid_starting": "در حال آزمایش و اتصال هوشمند موتور اَتر...",
       "hybrid_failed": "خطا در اتصال اَتر هوشمند؛ پروتکل‌ها پاسخگو نبودند.",
-      "banner_dns_rescue": "در حال رفع مسمومیت دی‌ان‌اس و گزینش امن‌ترین سرورها...",
-      "banner_cf_fallback": "آی‌پی‌های پیش‌فرض پاسخگو نبودند؛ در حال استخراج و اسکن از دیتابیس بزرگ رنج‌های کلودفلر...",
-
+      "banner_dns_rescue":
+          "در حال رفع مسمومیت دی‌ان‌اس و گزینش امن‌ترین سرورها...",
+      "banner_cf_fallback":
+          "آی‌پی‌های پیش‌فرض پاسخگو نبودند؛ در حال استخراج و اسکن از دیتابیس بزرگ رنج‌های کلودفلر...",
       "aether_title": "هسته ضدسانسور اَتر (WARP Engine)",
       "aether_subtitle": "تونل کل دستگاه با پروتکل‌های پیشرفته کلودفلر",
       "aether_mode_select": "حالت پروتکل (Protocol Mode)",
       "mode_auto_title": "(پیشنهادی - Auto Failover) انتخاب خودکار هوشمند",
-      "mode_auto_desc": "تست خودکار تمام مسیرها و نویزها و اتصال به پایدارترین حالت",
+      "mode_auto_desc":
+          "تست خودکار تمام مسیرها و نویزها و اتصال به پایدارترین حالت",
       "mode_masque_h2_title": "MASQUE (HTTP/2 - TCP)",
-      "mode_masque_h2_desc": "دارای فرگمنت TLS جهت عبور تضمینی از فیلترینگ شدید",
+      "mode_masque_h2_desc":
+          "دارای فرگمنت TLS جهت عبور تضمینی از فیلترینگ شدید",
       "mode_masque_title": "MASQUE (HTTP/3 - QUIC)",
       "mode_masque_desc": "پرسرعت‌ترین حالت مبتنی بر پروتکل وب QUIC و UDP",
       "mode_gool_title": "Gool (WARP in WARP)",
       "mode_gool_desc": "دو لایه وایرگارد تودرتو برای بالاترین ضریب عبور",
       "mode_wireguard_title": "WireGuard (WARP)",
-      "mode_wireguard_desc": "پروتکل وایرگارد مستقیم کلودفلر با مصرف بهینه باتری",
-      "aether_launching": "در حال راه‌اندازی و آزمایش خودکار پروتکل‌های ضدسانسور...",
+      "mode_wireguard_desc":
+          "پروتکل وایرگارد مستقیم کلودفلر با مصرف بهینه باتری",
+      "aether_launching":
+          "در حال راه‌اندازی و آزمایش خودکار پروتکل‌های ضدسانسور...",
       "aether_connected_banner": "تونل اَتر فعال است (کل گوشی تونل شد)",
-      "aether_start_err": "خطا در راه‌اندازی هسته اَتر؛ لطفاً مجدداً تلاش کنید.",
-
+      "aether_start_err":
+          "خطا در راه‌اندازی هسته اَتر؛ لطفاً مجدداً تلاش کنید.",
       "tor_title": "شبکه پیازی تور (Tor Network)",
       "tor_subtitle": "ناشناسی کامل و تونل چندلایه‌ای (Tor over MASQUE)",
       "tor_mode_select": "نوع مسیر اتصال به تور",
-      "tor_mode_aether_masque_title": "(پیشنهادی - ضد فیلتر قطعی) اَتر مسک + تور",
-      "tor_mode_aether_masque_desc": "عبور هوشمند ترافیک تور از بستر TLS Fragment اَتر",
+      "tor_mode_aether_masque_title":
+          "(پیشنهادی - ضد فیلتر قطعی) اَتر مسک + تور",
+      "tor_mode_aether_masque_desc":
+          "عبور هوشمند ترافیک تور از بستر TLS Fragment اَتر",
       "tor_mode_aether_quic_title": "اَتر کوئیک + تور (MASQUE QUIC)",
-      "tor_mode_aether_quic_desc": "ترکیب سریع‌ترین لایه پروتکل QUIC کلودفلر با مدارهای پیازی تور",
+      "tor_mode_aether_quic_desc":
+          "ترکیب سریع‌ترین لایه پروتکل QUIC کلودفلر با مدارهای پیازی تور",
       "tor_mode_direct_title": "اتصال مستقیم (Direct Tor Relay)",
       "tor_mode_direct_desc": "اتصال مستقیم به رله‌های تور بدون واسطه",
       "tor_mode_snowflake_title": "پل اسنوفلیک (Snowflake Bridge)",
-      "tor_mode_snowflake_desc": "دور زدن فیلترینگ از طریق پروکسی‌های موقت WebRTC",
+      "tor_mode_snowflake_desc":
+          "دور زدن فیلترینگ از طریق پروکسی‌های موقت WebRTC",
       "tor_mode_custom_title": "پل سفارشی (Custom Bridges)",
       "tor_mode_custom_desc": "ورود خطوط پل‌های اختصاصی شما",
       "tor_connected_banner": "شبکه تور فعال است (کل دستگاه ناشناس و تونل شد)",
-      "tor_start_err": "خطا در برقراری ارتباط با شبکه تور؛ اتصال اینترنت را چک کنید.",
+      "tor_start_err":
+          "خطا در برقراری ارتباط با شبکه تور؛ اتصال اینترنت را چک کنید.",
       "tor_custom_bridge_hint": "Enter bridge lines here...",
       "tor_building_circuits": "در حال ساخت مدارهای امن: ",
-
       "tor_step_cleanup": "آزادسازی پورت‌ها و ریست هسته‌ها...",
       "tor_step_aether_start": "راه‌اندازی پل اَتر مسک...",
       "tor_step_aether_test": "تست گذردهی واقعی اینترنت اَتر...",
       "tor_step_tor_start": "راه‌اندازی مدارهای پیازی تور...",
       "tor_step_vpn_start": "برقراری تونل امن کل گوشی...",
-      "aether_egress_err": "خطا: پل اَتر متصل شد اما امکان رد کردن ترافیک را ندارد. اینترنت را بررسی کنید.",
+      "aether_egress_err":
+          "خطا: پل اَتر متصل شد اما امکان رد کردن ترافیک را ندارد. اینترنت را بررسی کنید.",
       "aether_port_timeout": "تایم‌اوت پورت اَتر (۱۸۱۹)",
       "tor_socks_timeout": "تایم‌اوت شبکه تور (پورت ۹۰۵۰)",
       "tor_layer_aether": "پل اَتر مسک (MASQUE)",
       "tor_layer_tor": "مدارهای پیازی تور (Tor)",
       "tor_layer_vpn": "تونل کل دستگاه (V2Ray TUN)",
-
       "logs_title": "گزارشات و لاگ‌های سیستم",
       "logs_subtitle": "رویدادهای زنده، وضعیت هسته‌ها و عیب‌یابی خطاها",
       "logs_view_btn": "مشاهده و مدیریت لاگ‌ها",
@@ -454,14 +511,13 @@ class _HomePageState extends State<HomePage> {
       "logs_copy_all": "کپی تمام لاگ‌ها",
       "logs_clear_all": "پاک‌سازی لاگ‌ها",
       "logs_search_hint": "جستجو در میان لاگ‌ها...",
-
       "battery_opt_title": "بهینه‌سازی باتری و پایداری در پس‌زمینه",
-      "battery_opt_desc": "جهت جلوگیری از قطع شدن اتصال پس از چند دقیقه در پس‌زمینه، بهینه‌سازی باتری را برای برنامه خاموش کنید.",
+      "battery_opt_desc":
+          "جهت جلوگیری از قطع شدن اتصال پس از چند دقیقه در پس‌زمینه، بهینه‌سازی باتری را برای برنامه خاموش کنید.",
       "battery_opt_btn": "تنظیم عدم محدودیت باتری (Unrestricted)",
-
       "bypass_iran_title": "بایپس سایت‌های ایرانی (Bypass Iran)",
-      "bypass_iran_desc": "عبور مستقیم سایت‌های داخلی (.ir)، بانکی و دولتی بدون فیلترشکن",
-
+      "bypass_iran_desc":
+          "عبور مستقیم سایت‌های داخلی (.ir)، بانکی و دولتی بدون فیلترشکن",
       "testing_ip_info": "در حال دریافت مشخصات سرور خروجی...",
       "live_ping_label": "پینگ زنده",
       "public_ip_label": "آی‌پی سرور",
@@ -489,7 +545,8 @@ class _HomePageState extends State<HomePage> {
       "conn_time": "Время подключения: ",
       "no_config_err": "Сначала введите валидный конфиг",
       "connecting_msg": "Проверка и подключение...",
-      "os_perm_err": "Предоставьте разрешение VPN в системе и повторите попытку.",
+      "os_perm_err":
+          "Предоставьте разрешение VPN в системе и повторите попытку.",
       "acc_sync_ok": "Список активных аккаунтов успешно получен.",
       "acc_sync_err": "Ошибка подключения к серверу. Проверьте интернет.",
       "clipboard_empty": "Буфер обмена пуст",
@@ -503,67 +560,77 @@ class _HomePageState extends State<HomePage> {
       "theme_light": "Светлая тема (Light Mode)",
       "lang_setting": "Язык приложения (Language)",
       "privacy_title": "Политика конфиденциальности",
-      "privacy_text": "Мы уважаем вашу конфиденциальность. Приложение RedCloud VPN не сохраняет, не записывает и не отслеживает историю трафика или интернет-активность пользователей. Все ваши соединения надежно шифруются с использованием современных криптографических протоколов.",
+      "privacy_text":
+          "Мы уважаем вашу конфиденциальность. Приложение RedCloud VPN не сохраняет, не записывает и не отслеживает историю трафика или интернет-активность пользователей. Все ваши соединения надежно шифруются с использованием современных криптографических протоколов.",
       "contact_title": "Связь и поддержка проекта",
       "contact_telegram": "Наш Telegram-канал",
       "contact_donate": "Поддержать проект (Donate)",
       "copied_msg": "Скопировано в буфер обмена!",
       "server_updating_banner": "Серверы обновляются. Спасибо за терпение.",
-      "limit_exhausted_banner": "Дневной лимит аккаунта исчерпан! Автоматическое переключение...",
-
+      "limit_exhausted_banner":
+          "Дневной лимит аккаунта исчерпан! Автоматическое переключение...",
       "hybrid_mode_label": "Гибридный (Aether + Конфиг)",
       "hybrid_starting": "Тестирование и подключение движка Aether...",
       "hybrid_failed": "Ошибка подключения Aether. Протоколы не ответили.",
-      "banner_dns_rescue": "Устранение подмены DNS и подбор безопасных серверов...",
-      "banner_cf_fallback": "Стандартные IP не отвечают; сканирование диапазонов Cloudflare...",
-
+      "banner_dns_rescue":
+          "Устранение подмены DNS и подбор безопасных серверов...",
+      "banner_cf_fallback":
+          "Стандартные IP не отвечают; сканирование диапазонов Cloudflare...",
       "aether_title": "Движок обхода блокировок Aether (WARP)",
-      "aether_subtitle": "Туннелирование всего устройства через Cloudflare WARP",
+      "aether_subtitle":
+          "Туннелирование всего устройства через Cloudflare WARP",
       "aether_mode_select": "Режим протокола (Protocol Mode)",
       "mode_auto_title": "(Рекомендуется - Auto Failover) Умный автовыбор",
-      "mode_auto_desc": "Автоматическая проверка всех путей и зашумления для устойчивого соединения",
+      "mode_auto_desc":
+          "Автоматическая проверка всех путей и зашумления для устойчивого соединения",
       "mode_masque_h2_title": "MASQUE (HTTP/2 - TCP)",
-      "mode_masque_h2_desc": "TLS Фрагментация для обхода жестких блокировок ТСПУ/DPI",
+      "mode_masque_h2_desc":
+          "TLS Фрагментация для обхода жестких блокировок ТСПУ/DPI",
       "mode_masque_title": "MASQUE (HTTP/3 - QUIC)",
       "mode_masque_desc": "Сверхбыстрый режим на базе протоколов QUIC и UDP",
       "mode_gool_title": "Gool (WARP in WARP)",
-      "mode_gool_desc": "Двухуровневый WireGuard для обхода глубоких блокировок",
+      "mode_gool_desc":
+          "Двухуровневый WireGuard для обхода глубоких блокировок",
       "mode_wireguard_title": "WireGuard (WARP)",
-      "mode_wireguard_desc": "Прямой протокол WireGuard с экономией заряда батареи",
+      "mode_wireguard_desc":
+          "Прямой протокол WireGuard с экономией заряда батареи",
       "aether_launching": "Запуск ядра Aether и проверка шлюза...",
       "aether_connected_banner": "Aether активен (Весь трафик затуннелирован)",
       "aether_start_err": "Не удалось запустить ядро Aether. Попробуйте снова.",
-
       "tor_title": "Луковая сеть Tor (Tor Network)",
-      "tor_subtitle": "Полная анонимность и многослойный туннель (Tor over MASQUE)",
+      "tor_subtitle":
+          "Полная анонимность и многослойный туннель (Tor over MASQUE)",
       "tor_mode_select": "Режим маршрутизации Tor",
       "tor_mode_aether_masque_title": "(Рекомендуется) Aether MASQUE + Tor",
-      "tor_mode_aether_masque_desc": "Маршрутизация Tor через TLS Fragment Aether для 100% обхода ТСПУ",
+      "tor_mode_aether_masque_desc":
+          "Маршрутизация Tor через TLS Fragment Aether для 100% обхода ТСПУ",
       "tor_mode_aether_quic_title": "Aether QUIC + Tor (MASQUE H3)",
-      "tor_mode_aether_quic_desc": "Сочетание быстрой прослойки QUIC Cloudflare и луковой сети Tor",
+      "tor_mode_aether_quic_desc":
+          "Сочетание быстрой прослойки QUIC Cloudflare и луковой сети Tor",
       "tor_mode_direct_title": "Прямое подключение (Direct Tor Relay)",
-      "tor_mode_direct_desc": "Прямое подключение к узлам Tor без промежуточного моста",
+      "tor_mode_direct_desc":
+          "Прямое подключение к узлам Tor без промежуточного моста",
       "tor_mode_snowflake_title": "Мост Snowflake (Snowflake Bridge)",
       "tor_mode_snowflake_desc": "Обход DPI с помощью временных WebRTC-прокси",
       "tor_mode_custom_title": "Персональные мосты (Custom Bridges)",
       "tor_mode_custom_desc": "Ручной ввод ваших персональных строк мостов Tor",
       "tor_connected_banner": "Сеть Tor активна (Устройство анонимизировано)",
-      "tor_start_err": "Не удалось подключиться к сети Tor. Проверьте интернет.",
+      "tor_start_err":
+          "Не удалось подключиться к сети Tor. Проверьте интернет.",
       "tor_custom_bridge_hint": "Введите строки мостов здесь...",
       "tor_building_circuits": "Построение защищенных цепочек: ",
-
       "tor_step_cleanup": "Освобождение портов и сброс ядер...",
       "tor_step_aether_start": "Запуск моста Aether MASQUE...",
       "tor_step_aether_test": "Проверка выхода в интернет Aether...",
       "tor_step_tor_start": "Запуск цепочек Tor...",
       "tor_step_vpn_start": "Установка туннеля VPN для всего устройства...",
-      "aether_egress_err": "Ошибка: Мост Aether подключен, но не пропускает трафик. Проверьте сеть.",
+      "aether_egress_err":
+          "Ошибка: Мост Aether подключен, но не пропускает трафик. Проверьте сеть.",
       "aether_port_timeout": "Тайм-аут порта Aether (1819)",
       "tor_socks_timeout": "Тайм-аут сети Tor (порт 9050)",
       "tor_layer_aether": "Мост Aether MASQUE",
       "tor_layer_tor": "Луковые цепочки Tor",
       "tor_layer_vpn": "Туннель всего устройства",
-
       "logs_title": "Системные логи и диагностика",
       "logs_subtitle": "Живые события, статус ядер и отладка ошибок",
       "logs_view_btn": "Просмотр системных логов",
@@ -573,14 +640,13 @@ class _HomePageState extends State<HomePage> {
       "logs_copy_all": "Копировать все логи",
       "logs_clear_all": "Очистить логи",
       "logs_search_hint": "Поиск по логам...",
-
       "battery_opt_title": "Оптимизация батареи и работа в фоновом режиме",
-      "battery_opt_desc": "Отключите ограничение батареи для приложения, чтобы Android не закрывал соединение в фоновом режиме.",
+      "battery_opt_desc":
+          "Отключите ограничение батареи для приложения, чтобы Android не закрывал соединение в фоновом режиме.",
       "battery_opt_btn": "Снять ограничения батареи (Unrestricted)",
-
       "bypass_iran_title": "Обход сайтов РФ (Bypass Russia)",
-      "bypass_iran_desc": "Прямой доступ для сайтов .ru, .рф, банков, Госуслуг и сервисов без VPN",
-
+      "bypass_iran_desc":
+          "Прямой доступ для сайтов .ru, .рф, банков, Госуслуг и сервисов без VPN",
       "testing_ip_info": "Получение данных внешнего сервера...",
       "live_ping_label": "Живой Пинг",
       "public_ip_label": "IP Сервера",
@@ -608,7 +674,8 @@ class _HomePageState extends State<HomePage> {
       "conn_time": "Connection Time: ",
       "no_config_err": "Please enter a valid config first",
       "connecting_msg": "Probing & connecting...",
-      "os_perm_err": "Please approve the system VPN dialog and press connect again.",
+      "os_perm_err":
+          "Please approve the system VPN dialog and press connect again.",
       "acc_sync_ok": "Active accounts fetched successfully.",
       "acc_sync_err": "Failed to connect to server. Check your internet.",
       "clipboard_empty": "Your clipboard is empty",
@@ -622,22 +689,25 @@ class _HomePageState extends State<HomePage> {
       "theme_light": "Light Mode",
       "lang_setting": "App Language",
       "privacy_title": "Privacy Policy",
-      "privacy_text": "We respect your privacy. RedCloud VPN does not store, log, or monitor any traffic history of its users' online activities. All of your connections are securely encrypted using advanced cryptographic protocols.",
+      "privacy_text":
+          "We respect your privacy. RedCloud VPN does not store, log, or monitor any traffic history of its users' online activities. All of your connections are securely encrypted using advanced cryptographic protocols.",
       "contact_title": "Connect & Support Us",
       "contact_telegram": "Telegram Channel",
       "contact_donate": "Donate (Crypto)",
       "copied_msg": "Copied to clipboard!",
-      "server_updating_banner": "Servers are currently updating. Thank you for your patience.",
+      "server_updating_banner":
+          "Servers are currently updating. Thank you for your patience.",
       "limit_exhausted_banner": "Daily usage limit reached! Auto-switching...",
-
-      "banner_dns_rescue": "Resolving DNS poisoning & selecting cleanest resolvers...",
-      "banner_cf_fallback": "Default IPs unviable; deep scanning large Cloudflare CIDR pools...",
-
+      "banner_dns_rescue":
+          "Resolving DNS poisoning & selecting cleanest resolvers...",
+      "banner_cf_fallback":
+          "Default IPs unviable; deep scanning large Cloudflare CIDR pools...",
       "aether_title": "Aether Anti-Censorship Engine",
       "aether_subtitle": "Full-Device Tunnel Powered by Cloudflare WARP",
       "aether_mode_select": "Protocol Mode",
       "mode_auto_title": "(Recommended - Auto Failover) Smart Auto-Select",
-      "mode_auto_desc": "Auto probes all paths and noises to pick the most stable tunnel",
+      "mode_auto_desc":
+          "Auto probes all paths and noises to pick the most stable tunnel",
       "mode_masque_h2_title": "MASQUE (HTTP/2 - TCP)",
       "mode_masque_h2_desc": "TLS Fragmentation to bypass heavy censorship",
       "mode_masque_title": "MASQUE (HTTP/3 - QUIC)",
@@ -645,20 +715,23 @@ class _HomePageState extends State<HomePage> {
       "mode_gool_title": "Gool (WARP in WARP)",
       "mode_gool_desc": "Nested dual WireGuard for deepest censorship bypass",
       "mode_wireguard_title": "WireGuard (WARP)",
-      "mode_wireguard_desc": "Native Cloudflare WireGuard with low battery drain",
+      "mode_wireguard_desc":
+          "Native Cloudflare WireGuard with low battery drain",
       "aether_launching": "Starting Aether core & scanning gateway...",
       "aether_connected_banner": "Aether Active (Full Device Tunneled)",
       "aether_start_err": "Failed to start Aether core. Please try again.",
-
       "tor_title": "Tor Onion Network",
       "tor_subtitle": "Full Anonymity & Multi-Layered Tunnel (Tor over MASQUE)",
       "tor_mode_select": "Tor Routing Mode",
       "tor_mode_aether_masque_title": "(Top Recommended) Aether MASQUE + Tor",
-      "tor_mode_aether_masque_desc": "Tunnel Tor through Aether TLS Fragment to guarantee 100% censorship bypass",
+      "tor_mode_aether_masque_desc":
+          "Tunnel Tor through Aether TLS Fragment to guarantee 100% censorship bypass",
       "tor_mode_aether_quic_title": "Aether QUIC + Tor (MASQUE H3)",
-      "tor_mode_aether_quic_desc": "Ultra-fast Cloudflare QUIC layer paired with Onion routing",
+      "tor_mode_aether_quic_desc":
+          "Ultra-fast Cloudflare QUIC layer paired with Onion routing",
       "tor_mode_direct_title": "Direct Connection (Standard Relays)",
-      "tor_mode_direct_desc": "Direct connection to Tor relays without upstream bridge",
+      "tor_mode_direct_desc":
+          "Direct connection to Tor relays without upstream bridge",
       "tor_mode_snowflake_title": "Snowflake Bridge",
       "tor_mode_snowflake_desc": "Bypass DPI using temporary WebRTC proxies",
       "tor_mode_custom_title": "Custom Bridges",
@@ -667,19 +740,18 @@ class _HomePageState extends State<HomePage> {
       "tor_start_err": "Failed to connect to Tor network. Check your internet.",
       "tor_custom_bridge_hint": "Enter bridge lines here...",
       "tor_building_circuits": "Building Secure Circuits: ",
-
       "tor_step_cleanup": "Cleaning ports & resetting cores...",
       "tor_step_aether_start": "Starting Aether MASQUE bridge...",
       "tor_step_aether_test": "Testing Aether real internet egress...",
       "tor_step_tor_start": "Starting Tor Onion circuits...",
       "tor_step_vpn_start": "Establishing full device VPN tunnel...",
-      "aether_egress_err": "Error: Aether connected but failed to pass traffic. Check your connection.",
+      "aether_egress_err":
+          "Error: Aether connected but failed to pass traffic. Check your connection.",
       "aether_port_timeout": "Aether port timeout (1819)",
       "tor_socks_timeout": "Tor SOCKS timeout (9050)",
       "tor_layer_aether": "Aether MASQUE Bridge",
       "tor_layer_tor": "Tor Onion Circuits",
       "tor_layer_vpn": "Full Device Tunnel",
-
       "logs_title": "System Logs & Diagnostics",
       "logs_subtitle": "Live events, debug traces & error logs",
       "logs_view_btn": "View System Logs",
@@ -689,14 +761,13 @@ class _HomePageState extends State<HomePage> {
       "logs_copy_all": "Copy All Logs",
       "logs_clear_all": "Clear Logs",
       "logs_search_hint": "Search inside logs...",
-
       "battery_opt_title": "Battery Optimization & Background Stability",
-      "battery_opt_desc": "Disable battery optimization for this app to prevent Android from closing the connection after 10 minutes in the background.",
+      "battery_opt_desc":
+          "Disable battery optimization for this app to prevent Android from closing the connection after 10 minutes in the background.",
       "battery_opt_btn": "Set Battery to Unrestricted",
-
       "bypass_iran_title": "Bypass Domestic Sites (Bypass Russia)",
-      "bypass_iran_desc": "Direct routing for domestic domains (.ru, .рф), banking and govt traffic without VPN",
-
+      "bypass_iran_desc":
+          "Direct routing for domestic domains (.ru, .рф), banking and govt traffic without VPN",
       "testing_ip_info": "Discovering exit server info...",
       "live_ping_label": "Live Ping",
       "public_ip_label": "Server IP",
@@ -704,19 +775,24 @@ class _HomePageState extends State<HomePage> {
   };
 
   String _t(String key) {
-    return _localizedValues[widget.currentLang]?[key] ?? _localizedValues["en"]?[key] ?? key;
+    return _localizedValues[widget.currentLang]?[key] ??
+        _localizedValues["en"]?[key] ??
+        key;
   }
 
   String _countryCodeToEmoji(String countryCode) {
     if (countryCode.length != 2) return "🌐";
-    final int firstLetter = countryCode.toUpperCase().codeUnitAt(0) - 0x41 + 0x1F1E6;
-    final int secondLetter = countryCode.toUpperCase().codeUnitAt(1) - 0x41 + 0x1F1E6;
+    final int firstLetter =
+        countryCode.toUpperCase().codeUnitAt(0) - 0x41 + 0x1F1E6;
+    final int secondLetter =
+        countryCode.toUpperCase().codeUnitAt(1) - 0x41 + 0x1F1E6;
     return String.fromCharCode(firstLetter) + String.fromCharCode(secondLetter);
   }
 
   void _startHeartbeat() {
     _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 25), (timer) async {
+    _heartbeatTimer =
+        Timer.periodic(const Duration(seconds: 25), (timer) async {
       if (_activeEngine == ActiveEngine.none) {
         timer.cancel();
         return;
@@ -727,9 +803,12 @@ class _HomePageState extends State<HomePage> {
         if (_activeEngine == ActiveEngine.tor) targetPort = 9050;
         if (_activeEngine == ActiveEngine.psiphon) targetPort = 9081;
 
-        final socket = await Socket.connect('127.0.0.1', targetPort, timeout: const Duration(seconds: 2));
+        final socket = await Socket.connect('127.0.0.1', targetPort,
+            timeout: const Duration(seconds: 2));
         socket.destroy();
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("HEARTBEAT-ERR", "Heartbeat check error: $e");
+      }
     });
   }
 
@@ -738,11 +817,14 @@ class _HomePageState extends State<HomePage> {
     _heartbeatTimer = null;
   }
 
-  Future<Map<String, dynamic>?> _querySocks5Json(int socksPort, String targetHost, String path, {int timeoutMs = 4500}) async {
+  Future<Map<String, dynamic>?> _querySocks5Json(
+      int socksPort, String targetHost, String path,
+      {int timeoutMs = 4500}) async {
     final stopwatch = Stopwatch()..start();
     Socket? socket;
     try {
-      socket = await Socket.connect('127.0.0.1', socksPort, timeout: Duration(milliseconds: timeoutMs));
+      socket = await Socket.connect('127.0.0.1', socksPort,
+          timeout: Duration(milliseconds: timeoutMs));
 
       socket.add([0x05, 0x01, 0x00]);
       await socket.flush();
@@ -761,7 +843,14 @@ class _HomePageState extends State<HomePage> {
               stage = 1;
               final hostBytes = utf8.encode(targetHost);
               final connectReq = [
-                0x05, 0x01, 0x00, 0x03, hostBytes.length, ...hostBytes, 0x00, 0x50
+                0x05,
+                0x01,
+                0x00,
+                0x03,
+                hostBytes.length,
+                ...hostBytes,
+                0x00,
+                0x50
               ];
               socket?.add(connectReq);
               socket?.flush();
@@ -814,7 +903,9 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {
       return null;
     } finally {
-      try { socket?.destroy(); } catch (_) {}
+      try {
+        socket?.destroy();
+      } catch (_) {}
     }
   }
 
@@ -838,12 +929,17 @@ class _HomePageState extends State<HomePage> {
     if (_activeEngine == ActiveEngine.psiphon) targetSocksPort = 9081;
 
     try {
-      Map<String, dynamic>? data = await _querySocks5Json(targetSocksPort, "ip-api.com", "/json/", timeoutMs: 3500);
-      
+      Map<String, dynamic>? data = await _querySocks5Json(
+          targetSocksPort, "ip-api.com", "/json/",
+          timeoutMs: 3500);
+
       if (data == null || data['status'] != 'success') {
         await Future.delayed(const Duration(milliseconds: 300));
-        final fallbackData = await _querySocks5Json(targetSocksPort, "ipwho.is", "/", timeoutMs: 4000);
-        if (fallbackData != null && (fallbackData['success'] == true || fallbackData['ip'] != null)) {
+        final fallbackData = await _querySocks5Json(
+            targetSocksPort, "ipwho.is", "/",
+            timeoutMs: 4000);
+        if (fallbackData != null &&
+            (fallbackData['success'] == true || fallbackData['ip'] != null)) {
           data = {
             'status': 'success',
             'query': fallbackData['ip'],
@@ -869,7 +965,8 @@ class _HomePageState extends State<HomePage> {
             _realPingMs = ping;
             _isTestingIp = false;
           });
-          AppLogger.log("TELEMETRY", "Exit Server IP: $_publicIp ($_ipCountry $_ipFlagEmoji) | Latency: ${ping}ms");
+          AppLogger.log("TELEMETRY",
+              "Exit Server IP: $_publicIp ($_ipCountry $_ipFlagEmoji) | Latency: ${ping}ms");
           return;
         }
       }
@@ -899,7 +996,8 @@ class _HomePageState extends State<HomePage> {
             ),
             title: Row(
               children: [
-                Icon(Icons.language_rounded, color: Color(0xFF3B82F6), size: 28),
+                Icon(Icons.language_rounded,
+                    color: Color(0xFF3B82F6), size: 28),
                 SizedBox(width: 10),
                 Text(
                   "Языک / Language / زبان",
@@ -913,7 +1011,8 @@ class _HomePageState extends State<HomePage> {
               children: [
                 const Text(
                   "Выберите язык приложения / Select language / انتخاب زبان:",
-                  style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.5),
+                  style: TextStyle(
+                      fontSize: 13, color: Colors.white70, height: 1.5),
                 ),
                 const SizedBox(height: 20),
                 ListTile(
@@ -923,8 +1022,10 @@ class _HomePageState extends State<HomePage> {
                     side: const BorderSide(color: Colors.white12),
                   ),
                   leading: const Text("🇷🇺", style: TextStyle(fontSize: 24)),
-                  title: const Text("Русский (Russian)", style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                  title: const Text("Русский (Russian)",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: const Icon(Icons.arrow_forward_ios,
+                      size: 16, color: Colors.grey),
                   onTap: () {
                     widget.changeLang("ru");
                     Navigator.pop(dialogContext);
@@ -938,8 +1039,10 @@ class _HomePageState extends State<HomePage> {
                     side: const BorderSide(color: Colors.white12),
                   ),
                   leading: const Text("🇮🇷", style: TextStyle(fontSize: 24)),
-                  title: const Text("فارسی (Persian)", style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                  title: const Text("فارسی (Persian)",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: const Icon(Icons.arrow_forward_ios,
+                      size: 16, color: Colors.grey),
                   onTap: () {
                     widget.changeLang("fa");
                     Navigator.pop(dialogContext);
@@ -953,8 +1056,10 @@ class _HomePageState extends State<HomePage> {
                     side: const BorderSide(color: Colors.white12),
                   ),
                   leading: const Text("🇬🇧", style: TextStyle(fontSize: 24)),
-                  title: const Text("English (Английский)", style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                  title: const Text("English (Английский)",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: const Icon(Icons.arrow_forward_ios,
+                      size: 16, color: Colors.grey),
                   onTap: () {
                     widget.changeLang("en");
                     Navigator.pop(dialogContext);
@@ -968,7 +1073,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _showBannerNotification(String message, {Color color = const Color(0xFF3B82F6), IconData icon = Icons.info_outline_rounded}) {
+  void _showBannerNotification(String message,
+      {Color color = const Color(0xFF3B82F6),
+      IconData icon = Icons.info_outline_rounded}) {
     if (!mounted) return;
     _bannerTimer?.cancel();
     setState(() {
@@ -1031,8 +1138,10 @@ class _HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       final bool? enabled = prefs.getBool('split_tunnel_enabled');
       final String? mode = prefs.getString('split_tunnel_mode');
-      final List<String>? selected = prefs.getStringList('split_tunnel_selected_apps');
-      final List<String>? allPkgs = prefs.getStringList('split_tunnel_all_packages');
+      final List<String>? selected =
+          prefs.getStringList('split_tunnel_selected_apps');
+      final List<String>? allPkgs =
+          prefs.getStringList('split_tunnel_all_packages');
       if (mounted) {
         setState(() {
           if (enabled != null) _splitTunnelEnabled = enabled;
@@ -1055,7 +1164,8 @@ class _HomePageState extends State<HomePage> {
       // حالت دوم: تمام برنامه‌های گوشی به جز موارد انتخابی بلاک می‌شوند تا فقط انتخابی‌ها پروکسی شوند
       if (_splitTunnelSelectedApps.isEmpty) return [appPackageName];
       final blocked = _allInstalledPackages
-          .where((pkg) => !_splitTunnelSelectedApps.contains(pkg) && pkg != appPackageName)
+          .where((pkg) =>
+              !_splitTunnelSelectedApps.contains(pkg) && pkg != appPackageName)
           .toList();
       return [appPackageName, ...blocked];
     }
@@ -1087,7 +1197,8 @@ class _HomePageState extends State<HomePage> {
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
     } catch (_) {}
 
-    if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
+    if (_selectedAccountIndex >= 0 &&
+        _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
     }
   }
@@ -1102,7 +1213,8 @@ class _HomePageState extends State<HomePage> {
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
     } catch (_) {}
 
-    if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
+    if (_selectedAccountIndex >= 0 &&
+        _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
     }
   }
@@ -1117,7 +1229,8 @@ class _HomePageState extends State<HomePage> {
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
     } catch (_) {}
 
-    if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
+    if (_selectedAccountIndex >= 0 &&
+        _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
     }
   }
@@ -1135,25 +1248,29 @@ class _HomePageState extends State<HomePage> {
         if (engine != ActiveEngine.none) {
           bool aetherAlive = false;
           bool torAlive = false;
-          try { 
-            aetherAlive = await _aetherChannel.invokeMethod('isAetherRunning') ?? false; 
+          try {
+            aetherAlive =
+                await _aetherChannel.invokeMethod('isAetherRunning') ?? false;
           } catch (_) {}
-          try { 
-            torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false; 
+          try {
+            torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false;
           } catch (_) {}
 
           if (engine == ActiveEngine.aether && aetherAlive) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.aether);
             _startHeartbeat();
-            AppLogger.log("STATE", "Состояние подключения Aether восстановлено из фонового режима.");
+            AppLogger.log("STATE",
+                "Состояние подключения Aether восстановлено из фонового режима.");
           } else if (engine == ActiveEngine.tor && torAlive) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.tor);
             _startHeartbeat();
-            AppLogger.log("STATE", "Состояние подключения Tor восстановлено из фонового режима.");
+            AppLogger.log("STATE",
+                "Состояние подключения Tor восстановлено из фонового режима.");
           } else if (engine == ActiveEngine.dashboard) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.dashboard);
             _startHeartbeat();
-            AppLogger.log("STATE", "Состояние подключения восстановлено из фонового режима.");
+            AppLogger.log("STATE",
+                "Состояние подключения восстановлено из фонового режима.");
           }
         }
       }
@@ -1186,7 +1303,8 @@ class _HomePageState extends State<HomePage> {
       } catch (_) {}
 
       try {
-        final dynamic rawNativeLogs = await _torChannel.invokeMethod('getNativeLogs');
+        final dynamic rawNativeLogs =
+            await _torChannel.invokeMethod('getNativeLogs');
         if (rawNativeLogs is List && rawNativeLogs.isNotEmpty) {
           for (var nLog in rawNativeLogs) {
             AppLogger.addNativeLog(nLog.toString());
@@ -1222,23 +1340,52 @@ class _HomePageState extends State<HomePage> {
     try {
       await flutterV2ray.stopV2Ray();
     } catch (_) {}
-    try { await _torChannel.invokeMethod('killAllCores'); } catch (_) {}
-    try { await _aetherChannel.invokeMethod('stopAether'); } catch (_) {}
+    try {
+      await _torChannel.invokeMethod('killAllCores');
+    } catch (_) {}
+    try {
+      await _aetherChannel.invokeMethod('stopAether');
+    } catch (_) {}
     await _saveEngineState(ActiveEngine.none);
     await Future.delayed(const Duration(milliseconds: 300));
   }
 
-  Future<Map<String, dynamic>?> _verifyDnsIp(String ip, {int timeoutMs = 1500}) async {
+  Future<Map<String, dynamic>?> _verifyDnsIp(String ip,
+      {int timeoutMs = 1500}) async {
     RawDatagramSocket? socket;
     try {
       final InternetAddress targetAddress = InternetAddress(ip.trim());
       socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-      
+
       final List<int> dnsQuery = [
-        0x12, 0x34, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x06, 0x67, 0x6f, 0x6f,
-        0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00,
-        0x00, 0x01, 0x00, 0x01
+        0x12,
+        0x34,
+        0x01,
+        0x00,
+        0x00,
+        0x01,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x06,
+        0x67,
+        0x6f,
+        0x6f,
+        0x67,
+        0x6c,
+        0x65,
+        0x03,
+        0x63,
+        0x6f,
+        0x6d,
+        0x00,
+        0x00,
+        0x01,
+        0x00,
+        0x01
       ];
 
       final stopwatch = Stopwatch()..start();
@@ -1260,13 +1407,16 @@ class _HomePageState extends State<HomePage> {
               final int o4 = data[len - 1];
 
               final bool isPoisoned = (o1 == 10 && o2 == 10 && o3 == 34) ||
-                                     (o1 == 10) || (o1 == 127) || (o1 == 0) || 
-                                     (o1 == 192 && o2 == 168) || 
-                                     (o1 == 172 && o2 >= 16 && o2 <= 31) ||
-                                     (o1 == 0 && o2 == 0 && o3 == 0 && o4 == 0);
+                  (o1 == 10) ||
+                  (o1 == 127) ||
+                  (o1 == 0) ||
+                  (o1 == 192 && o2 == 168) ||
+                  (o1 == 172 && o2 >= 16 && o2 <= 31) ||
+                  (o1 == 0 && o2 == 0 && o3 == 0 && o4 == 0);
 
               if (!isPoisoned && !completer.isCompleted) {
-                AppLogger.log("DNS-PROBE", "Clean DNS: $ip (${stopwatch.elapsedMilliseconds} ms)");
+                AppLogger.log("DNS-PROBE",
+                    "Clean DNS: $ip (${stopwatch.elapsedMilliseconds} ms)");
                 completer.complete({
                   'ip': ip,
                   'latency': stopwatch.elapsedMilliseconds,
@@ -1299,7 +1449,9 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       return null;
     } finally {
-      try { socket?.close(); } catch (_) {}
+      try {
+        socket?.close();
+      } catch (_) {}
     }
   }
 
@@ -1318,16 +1470,29 @@ class _HomePageState extends State<HomePage> {
 
     if (candidates.isEmpty) {
       candidates = [
-        "8.8.8.8", "8.8.4.4", "9.9.9.9", "149.112.112.112",
-        "208.67.222.222", "208.67.220.220", "94.140.14.14", "94.140.15.15",
-        "185.228.168.9", "185.228.169.9", "77.88.8.8", "77.88.8.1",
-        "223.5.5.5", "223.6.6.6", "119.29.29.29", "1.1.1.1", "1.0.0.1"
+        "8.8.8.8",
+        "8.8.4.4",
+        "9.9.9.9",
+        "149.112.112.112",
+        "208.67.222.222",
+        "208.67.220.220",
+        "94.140.14.14",
+        "94.140.15.15",
+        "185.228.168.9",
+        "185.228.169.9",
+        "77.88.8.8",
+        "77.88.8.1",
+        "223.5.5.5",
+        "223.6.6.6",
+        "119.29.29.29",
+        "1.1.1.1",
+        "1.0.0.1"
       ];
     }
 
     final List<Map<String, dynamic>> verified = [];
     final chunkPool = candidates.take(60).toList();
-    
+
     for (int i = 0; i < chunkPool.length; i += 15) {
       final chunk = chunkPool.sublist(i, (i + 15).clamp(0, chunkPool.length));
       final tasks = chunk.map((ip) => _verifyDnsIp(ip, timeoutMs: 1400));
@@ -1342,21 +1507,25 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    verified.sort((a, b) => (a['latency'] as int).compareTo(b['latency'] as int));
+    verified
+        .sort((a, b) => (a['latency'] as int).compareTo(b['latency'] as int));
     if (verified.isNotEmpty) {
       final finalDns = verified.map((e) => e['ip'] as String).toList();
-      AppLogger.log("DNS-RESCUE", "Проверка DNS успешно завершена. Активные DNS: $finalDns");
+      AppLogger.log("DNS-RESCUE",
+          "Проверка DNS успешно завершена. Активные DNS: $finalDns");
       return finalDns;
     }
     return ["8.8.8.8", "9.9.9.9", "1.1.1.1"];
   }
 
-  Future<int?> _testIpLayer7(String ip, String host, String path, {int timeoutMs = 1800}) async {
+  Future<int?> _testIpLayer7(String ip, String host, String path,
+      {int timeoutMs = 1800}) async {
     final stopwatch = Stopwatch()..start();
     Socket? rawSocket;
     SecureSocket? secureSocket;
     try {
-      rawSocket = await Socket.connect(ip, 443, timeout: Duration(milliseconds: timeoutMs));
+      rawSocket = await Socket.connect(ip, 443,
+          timeout: Duration(milliseconds: timeoutMs));
       secureSocket = await SecureSocket.secure(
         rawSocket,
         host: host,
@@ -1379,7 +1548,8 @@ class _HomePageState extends State<HomePage> {
       final completer = Completer<int?>();
       secureSocket.listen((data) {
         final response = String.fromCharCodes(data);
-        if (response.startsWith("HTTP/1.1 101") || response.startsWith("HTTP/1.0 101")) {
+        if (response.startsWith("HTTP/1.1 101") ||
+            response.startsWith("HTTP/1.0 101")) {
           stopwatch.stop();
           if (!completer.isCompleted) {
             completer.complete(stopwatch.elapsedMilliseconds);
@@ -1409,15 +1579,20 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {
       return null;
     } finally {
-      try { secureSocket?.destroy(); } catch (_) {}
-      try { rawSocket?.destroy(); } catch (_) {}
+      try {
+        secureSocket?.destroy();
+      } catch (_) {}
+      try {
+        rawSocket?.destroy();
+      } catch (_) {}
     }
   }
 
   Future<List<String>> _loadDeepScanIps() async {
     final List<String> candidateIps = [];
     try {
-      final String cfContent = await rootBundle.loadString('assets/cloudflare_IPs.txt');
+      final String cfContent =
+          await rootBundle.loadString('assets/cloudflare_IPs.txt');
       for (var line in cfContent.split('\n')) {
         final clean = line.trim();
         if (clean.isEmpty || clean.startsWith('#')) continue;
@@ -1440,10 +1615,20 @@ class _HomePageState extends State<HomePage> {
 
     if (candidateIps.isEmpty) {
       final fallbackCidrs = [
-        "104.16.0.0", "104.18.0.0", "104.19.0.0", "104.20.0.0",
-        "104.21.0.0", "104.22.0.0", "104.24.0.0", "104.25.0.0",
-        "104.26.0.0", "104.27.0.0", "172.64.0.0", "172.67.0.0",
-        "162.159.0.0", "188.114.96.0"
+        "104.16.0.0",
+        "104.18.0.0",
+        "104.19.0.0",
+        "104.20.0.0",
+        "104.21.0.0",
+        "104.22.0.0",
+        "104.24.0.0",
+        "104.25.0.0",
+        "104.26.0.0",
+        "104.27.0.0",
+        "172.64.0.0",
+        "172.67.0.0",
+        "162.159.0.0",
+        "188.114.96.0"
       ];
       for (var prefix in fallbackCidrs) {
         final octets = prefix.split('.');
@@ -1459,13 +1644,15 @@ class _HomePageState extends State<HomePage> {
   Future<String> _findFastestIP(String host, String path) async {
     String bestIP = "";
     int bestLatency = 9999;
-    
+
     final fastPool = _defaultCloudflareIPs;
     final List<Future<MapEntry<String, int>>> fastTasks = fastPool.map((ip) {
-      return _testIpLayer7(ip, host, path, timeoutMs: 1400).then((latency) => MapEntry(ip, latency ?? 9999));
+      return _testIpLayer7(ip, host, path, timeoutMs: 1400)
+          .then((latency) => MapEntry(ip, latency ?? 9999));
     }).toList();
 
-    final List<MapEntry<String, int>> fastResults = await Future.wait(fastTasks);
+    final List<MapEntry<String, int>> fastResults =
+        await Future.wait(fastTasks);
     for (var result in fastResults) {
       if (result.value < bestLatency && result.value < 1500) {
         bestLatency = result.value;
@@ -1490,9 +1677,11 @@ class _HomePageState extends State<HomePage> {
     final candidatePool = deepPool.take(150).toList();
 
     for (int i = 0; i < candidatePool.length; i += 20) {
-      final chunk = candidatePool.sublist(i, (i + 20).clamp(0, candidatePool.length));
+      final chunk =
+          candidatePool.sublist(i, (i + 20).clamp(0, candidatePool.length));
       final List<Future<MapEntry<String, int>>> scanTasks = chunk.map((ip) {
-        return _testIpLayer7(ip, host, path, timeoutMs: 1800).then((latency) => MapEntry(ip, latency ?? 9999));
+        return _testIpLayer7(ip, host, path, timeoutMs: 1800)
+            .then((latency) => MapEntry(ip, latency ?? 9999));
       }).toList();
 
       final List<MapEntry<String, int>> results = await Future.wait(scanTasks);
@@ -1673,11 +1862,8 @@ class _HomePageState extends State<HomePage> {
       ]);
     }
 
-    rules.add({
-      "type": "field",
-      "network": "tcp,udp",
-      "outboundTag": outboundTag
-    });
+    rules.add(
+        {"type": "field", "network": "tcp,udp", "outboundTag": outboundTag});
 
     final Map<String, dynamic> bridgeConfig = {
       "log": {"loglevel": "none"},
@@ -1715,34 +1901,21 @@ class _HomePageState extends State<HomePage> {
           "protocol": "socks",
           "settings": {
             "servers": [
-              {
-                "address": "127.0.0.1",
-                "port": socksPort
-              }
+              {"address": "127.0.0.1", "port": socksPort}
             ]
           },
           "streamSettings": {
-            "sockopt": {
-              "tcpKeepAliveInterval": 15
-            }
+            "sockopt": {"tcpKeepAliveInterval": 15}
           }
         },
         {
           "tag": "direct",
           "protocol": "freedom",
-          "settings": {
-            "domainStrategy": "AsIs"
-          }
+          "settings": {"domainStrategy": "AsIs"}
         },
-        {
-          "tag": "block",
-          "protocol": "blackhole"
-        }
+        {"tag": "block", "protocol": "blackhole"}
       ],
-      "routing": {
-        "domainStrategy": "IPIfNonMatch",
-        "rules": rules
-      }
+      "routing": {"domainStrategy": "IPIfNonMatch", "rules": rules}
     };
     return jsonEncode(bridgeConfig);
   }
@@ -1758,46 +1931,63 @@ class _HomePageState extends State<HomePage> {
       _realPingMs = null;
     });
 
-    _showSnackBar(_l("در حال اتصال به شبکه سایفون ($_selectedPsiphonCountry)...", "Подключение к сети Psiphon ($_selectedPsiphonCountry)...", "Connecting to Psiphon network ($_selectedPsiphonCountry)..."));
+    _showSnackBar(_l(
+        "در حال اتصال به شبکه سایفون ($_selectedPsiphonCountry)...",
+        "Подключение к сети Psiphon ($_selectedPsiphonCountry)...",
+        "Connecting to Psiphon network ($_selectedPsiphonCountry)..."));
     await _resetAllEngines();
 
     try {
       if (_isPsiphonHybrid) {
-        _showSnackBar(_l("راه‌اندازی پل اَتر مسک برای سایفون...", "Запуск моста Aether MASQUE для Psiphon...", "Launching Aether MASQUE bridge for Psiphon..."));
-        final dynamic aetherRes = await _aetherChannel.invokeMethod('startSmartAether', {'port': 1819});
+        _showSnackBar(_l(
+            "راه‌اندازی پل اَتر مسک برای سایفون...",
+            "Запуск моста Aether MASQUE для Psiphon...",
+            "Launching Aether MASQUE bridge for Psiphon..."));
+        final dynamic aetherRes = await _aetherChannel
+            .invokeMethod('startSmartAether', {'port': 1819});
         if (aetherRes == null) {
-          throw Exception(_l("پل اَتر پاسخگو نبود.", "Моست Aether не ответил.", "Aether bridge did not respond."));
+          throw Exception(_l("پل اَتر پاسخگو نبود.", "Моست Aether не ответил.",
+              "Aether bridge did not respond."));
         }
       }
 
       final bool started = await _torChannel.invokeMethod('startPsiphon', {
-        'port': 9081,
-        'isHybrid': _isPsiphonHybrid,
-        'region': _selectedPsiphonCountry,
-        'cdnFronting': _isPsiphonCdnFronting,
-      }) ?? false;
+            'port': 9081,
+            'isHybrid': _isPsiphonHybrid,
+            'region': _selectedPsiphonCountry,
+            'cdnFronting': _isPsiphonCdnFronting,
+          }) ??
+          false;
 
       if (!started) {
-        throw Exception(_l("عدم امکان استارت پروسس سایفون", "Не удалось запустить процесс Psiphon", "Could not start Psiphon process"));
+        throw Exception(_l(
+            "عدم امکان استارت پروسس سایفون",
+            "Не удалось запустить процесс Psiphon",
+            "Could not start Psiphon process"));
       }
 
       bool socksReady = false;
       for (int i = 1; i <= 90; i++) {
         await Future.delayed(const Duration(milliseconds: 500));
         socksReady = await _torChannel.invokeMethod('checkPsiphonReady', {
-          'port': 9081,
-          'timeoutMs': 800,
-        }) ?? false;
+              'port': 9081,
+              'timeoutMs': 800,
+            }) ??
+            false;
         if (socksReady) break;
       }
 
       if (!socksReady) {
-        throw Exception(_l("تایم‌اوت ساکس سایفون (پورت ۹۰۸۱)", "Тайм-аут SOCKS Psiphon (порт 9081)", "Psiphon SOCKS timeout (port 9081)"));
+        throw Exception(_l(
+            "تایم‌اوت ساکس سایفون (پورت ۹۰۸۱)",
+            "Тайм-аут SOCKS Psiphon (порт 9081)",
+            "Psiphon SOCKS timeout (port 9081)"));
       }
 
       if (await flutterV2ray.requestPermission()) {
-        final String psiphonConfig = _generateBridgeV2RayConfig(9081, "psiphon-proxy");
-        
+        final String psiphonConfig =
+            _generateBridgeV2RayConfig(9081, "psiphon-proxy");
+
         flutterV2ray.startV2Ray(
           remark: "Psiphon (${_selectedPsiphonCountry.toUpperCase()})",
           config: psiphonConfig,
@@ -1815,7 +2005,10 @@ class _HomePageState extends State<HomePage> {
             _isTransitioning = false;
           });
         }
-        _showSnackBar(_l("شبکه سایفون فعال شد (تونل کل دستگاه)", "Сеть Psiphon активна (туннель для всего устройства)", "Psiphon network active (Full device tunnel)"));
+        _showSnackBar(_l(
+            "شبکه سایفون فعال شد (تونل کل دستگاه)",
+            "Сеть Psiphon активна (туннель для всего устройства)",
+            "Psiphon network active (Full device tunnel)"));
       } else {
         await _resetAllEngines();
         if (mounted) setState(() => _activeEngine = ActiveEngine.none);
@@ -1824,7 +2017,10 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       await _resetAllEngines();
       if (mounted) setState(() => _activeEngine = ActiveEngine.none);
-      _showSnackBar(_l("خطا در سایفون: ${e.toString().replaceAll("Exception: ", "")}", "Ошибка Psiphon: ${e.toString().replaceAll("Exception: ", "")}", "Psiphon error: ${e.toString().replaceAll("Exception: ", "")}"));
+      _showSnackBar(_l(
+          "خطا در سایفون: ${e.toString().replaceAll("Exception: ", "")}",
+          "Ошибка Psiphon: ${e.toString().replaceAll("Exception: ", "")}",
+          "Psiphon error: ${e.toString().replaceAll("Exception: ", "")}"));
     } finally {
       if (mounted) setState(() => _isTransitioning = false);
     }
@@ -1848,9 +2044,11 @@ class _HomePageState extends State<HomePage> {
 
     try {
       int? upstreamPort;
-      if (_selectedTorMode == "aether_masque" || _selectedTorMode == "aether_quic") {
+      if (_selectedTorMode == "aether_masque" ||
+          _selectedTorMode == "aether_quic") {
         upstreamPort = 1819;
-        final String aetherMode = _selectedTorMode == "aether_masque" ? "masque_h2" : "masque";
+        final String aetherMode =
+            _selectedTorMode == "aether_masque" ? "masque_h2" : "masque";
 
         if (mounted) {
           setState(() {
@@ -1859,11 +2057,13 @@ class _HomePageState extends State<HomePage> {
           });
         }
 
-        final bool aetherStarted = await _aetherChannel.invokeMethod('startAether', {
-          'mode': aetherMode,
-          'port': 1819,
-          'noize': 'firewall',
-        }) ?? false;
+        final bool aetherStarted =
+            await _aetherChannel.invokeMethod('startAether', {
+                  'mode': aetherMode,
+                  'port': 1819,
+                  'noize': 'firewall',
+                }) ??
+                false;
 
         if (!aetherStarted) {
           throw Exception(_t("aether_start_err"));
@@ -1873,9 +2073,10 @@ class _HomePageState extends State<HomePage> {
         for (int i = 0; i < 70; i++) {
           await Future.delayed(const Duration(milliseconds: 500));
           aetherReady = await _aetherChannel.invokeMethod('checkSocksReady', {
-            'port': 1819,
-            'timeoutMs': 700,
-          }) ?? false;
+                'port': 1819,
+                'timeoutMs': 700,
+              }) ??
+              false;
           if (aetherReady) break;
         }
 
@@ -1892,10 +2093,12 @@ class _HomePageState extends State<HomePage> {
         bool aetherCanPassTraffic = false;
         for (int i = 0; i < 15; i++) {
           await Future.delayed(const Duration(milliseconds: 500));
-          aetherCanPassTraffic = await _aetherChannel.invokeMethod('testAetherEgress', {
-            'port': 1819,
-            'timeoutMs': 3500,
-          }) ?? false;
+          aetherCanPassTraffic =
+              await _aetherChannel.invokeMethod('testAetherEgress', {
+                    'port': 1819,
+                    'timeoutMs': 3500,
+                  }) ??
+                  false;
           if (aetherCanPassTraffic) break;
         }
 
@@ -1918,11 +2121,12 @@ class _HomePageState extends State<HomePage> {
           .toList();
 
       final bool torStarted = await _torChannel.invokeMethod('startTor', {
-        'socksPort': 9050,
-        'upstreamPort': upstreamPort,
-        'mode': _selectedTorMode,
-        'bridges': bridges,
-      }) ?? false;
+            'socksPort': 9050,
+            'upstreamPort': upstreamPort,
+            'mode': _selectedTorMode,
+            'bridges': bridges,
+          }) ??
+          false;
 
       if (!torStarted) {
         throw Exception(_t("tor_start_err"));
@@ -1931,7 +2135,8 @@ class _HomePageState extends State<HomePage> {
       _torProgressTimer?.cancel();
       bool torReached100 = false;
 
-      _torProgressTimer = Timer.periodic(const Duration(milliseconds: 300), (timer) async {
+      _torProgressTimer =
+          Timer.periodic(const Duration(milliseconds: 300), (timer) async {
         try {
           final dynamic status = await _torChannel.invokeMethod('getTorStatus');
           if (status is Map) {
@@ -1955,10 +2160,12 @@ class _HomePageState extends State<HomePage> {
 
       for (int i = 0; i < 180; i++) {
         await Future.delayed(const Duration(milliseconds: 500));
-        final bool socksReady = await _torChannel.invokeMethod('checkTorReady', {
-          'socksPort': 9050,
-          'timeoutMs': 800,
-        }) ?? false;
+        final bool socksReady =
+            await _torChannel.invokeMethod('checkTorReady', {
+                  'socksPort': 9050,
+                  'timeoutMs': 800,
+                }) ??
+                false;
 
         if (socksReady && (torReached100 || _torBootstrapProgress >= 100)) {
           if (mounted) {
@@ -1980,7 +2187,7 @@ class _HomePageState extends State<HomePage> {
 
       if (await flutterV2ray.requestPermission()) {
         final String torConfig = _generateBridgeV2RayConfig(9050, "tor-proxy");
-        
+
         flutterV2ray.startV2Ray(
           remark: "Tor (${_selectedTorMode.toUpperCase()})",
           config: torConfig,
@@ -2037,10 +2244,11 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final bool started = await _aetherChannel.invokeMethod('startAether', {
-        'mode': _selectedAetherMode,
-        'port': 1819,
-        'noize': 'firewall',
-      }) ?? false;
+            'mode': _selectedAetherMode,
+            'port': 1819,
+            'noize': 'firewall',
+          }) ??
+          false;
 
       if (!started) {
         throw Exception("Failed to launch Aether binary");
@@ -2050,9 +2258,10 @@ class _HomePageState extends State<HomePage> {
       for (int i = 0; i < 70; i++) {
         await Future.delayed(const Duration(milliseconds: 500));
         socksReady = await _aetherChannel.invokeMethod('checkSocksReady', {
-          'port': 1819,
-          'timeoutMs': 700,
-        }) ?? false;
+              'port': 1819,
+              'timeoutMs': 700,
+            }) ??
+            false;
 
         if (socksReady) break;
       }
@@ -2062,8 +2271,9 @@ class _HomePageState extends State<HomePage> {
       }
 
       if (await flutterV2ray.requestPermission()) {
-        final String aetherConfig = _generateBridgeV2RayConfig(1819, "aether-proxy");
-        
+        final String aetherConfig =
+            _generateBridgeV2RayConfig(1819, "aether-proxy");
+
         flutterV2ray.startV2Ray(
           remark: "Aether (${_selectedAetherMode.toUpperCase()})",
           config: aetherConfig,
@@ -2119,7 +2329,7 @@ class _HomePageState extends State<HomePage> {
     if (_fetchedAccounts.isEmpty && !_serversUpdatingMode) {
       await _fetchAndLoadAccounts();
     }
-    
+
     if (_serversUpdatingMode || _fetchedAccounts.isEmpty) {
       setState(() {
         _isTransitioning = false;
@@ -2146,9 +2356,12 @@ class _HomePageState extends State<HomePage> {
 
     String activeWorker = "round-sea-8418.redcloudir.workers.dev";
     String activePath = "/";
-    if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
-      activeWorker = _fetchedAccounts[_selectedAccountIndex]['worker'] ?? activeWorker;
-      activePath = _fetchedAccounts[_selectedAccountIndex]['path'] ?? activePath;
+    if (_selectedAccountIndex >= 0 &&
+        _selectedAccountIndex < _fetchedAccounts.length) {
+      activeWorker =
+          _fetchedAccounts[_selectedAccountIndex]['worker'] ?? activeWorker;
+      activePath =
+          _fetchedAccounts[_selectedAccountIndex]['path'] ?? activePath;
     }
 
     // در حالت هیبریدی نیازی به اسکن آی‌پی در ایران و خواندن فایل بزرگ نیست؛ مستقیماً اَتر متصل می‌شود
@@ -2169,19 +2382,23 @@ class _HomePageState extends State<HomePage> {
     // در صورت فعال بودن تیک هیبریدی، ابتدا اَتر به شکل هوشمند روی بهترین پروتکل راه‌اندازی می‌شود
     if (_isHybridMode) {
       _showSnackBar(_t("hybrid_starting"));
-      AppLogger.log("HYBRID", "Запуск интеллектуального подбора Aether для гибридного подключения...");
+      AppLogger.log("HYBRID",
+          "Запуск интеллектуального подбора Aether для гибридного подключения...");
       try {
-        final dynamic result = await _aetherChannel.invokeMethod('startSmartAether', {
+        final dynamic result =
+            await _aetherChannel.invokeMethod('startSmartAether', {
           'port': 1819,
         });
         if (result is Map) {
           final mode = result['mode']?.toString() ?? 'unknown';
           final noize = result['noize']?.toString() ?? 'default';
           _hybridStatusText = "$mode ($noize)";
-          AppLogger.log("HYBRID", "Движок Aether успешно активирован в режиме $mode с шумом $noize.");
+          AppLogger.log("HYBRID",
+              "Движок Aether успешно активирован в режиме $mode с шумом $noize.");
         }
       } catch (e) {
-        AppLogger.log("HYBRID-ERR", "Ошибка запуска Aether в гибридном режиме: $e");
+        AppLogger.log(
+            "HYBRID-ERR", "Ошибка запуска Aether в гибридном режиме: $e");
         await _resetAllEngines();
         setState(() {
           _isTransitioning = false;
@@ -2192,19 +2409,22 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
+    if (_selectedAccountIndex >= 0 &&
+        _selectedAccountIndex < _fetchedAccounts.length) {
       final account = _fetchedAccounts[_selectedAccountIndex];
       final String worker = account['worker'] ?? '';
       final String uuid = account['uuid'] ?? '';
       final String path = account['path'] ?? '';
-      
+
       final String targetHost = _isHybridMode ? worker : fastest;
-      final String finalLink = "vless://$uuid@$targetHost:443?encryption=none&security=tls&sni=$worker&fp=chrome&alpn=http%2F1.1&type=ws&host=$worker&path=${Uri.encodeComponent(path)}#RedCloud_Fastest";
+      final String finalLink =
+          "vless://$uuid@$targetHost:443?encryption=none&security=tls&sni=$worker&fp=chrome&alpn=http%2F1.1&type=ws&host=$worker&path=${Uri.encodeComponent(path)}#RedCloud_Fastest";
       _parseAndSaveConfig(finalLink, updateUI: false);
     }
 
     if (_fullConfigJson.isEmpty) {
-      AppLogger.log("V2RAY", "Конфигурация недействительна для запуска.", isError: true);
+      AppLogger.log("V2RAY", "Конфигурация недействительна для запуска.",
+          isError: true);
       _showSnackBar(_t("config_err"));
       setState(() {
         _isTransitioning = false;
@@ -2256,7 +2476,8 @@ class _HomePageState extends State<HomePage> {
     await _resetAllEngines();
 
     if (_activeEngine == ActiveEngine.dashboard) {
-      await _reportDeltaUsage(forceDownload: currentDownload, forceUpload: currentUpload);
+      await _reportDeltaUsage(
+          forceDownload: currentDownload, forceUpload: currentUpload);
     }
 
     if (mounted) {
@@ -2274,17 +2495,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _formatBytes(int bytes, {bool isSpeed = false}) {
-    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
-    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
-    int i = 0;
-    double num = bytes.toDouble();
-    while (num >= 1024 && i < suffixes.length - 1) {
-      num /= 1024;
-      i++;
-    }
-    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
-  }
 
   void _parseAndSaveConfig(String link, {bool updateUI = true}) {
     if (link.isEmpty) return;
@@ -2304,7 +2514,8 @@ class _HomePageState extends State<HomePage> {
             protocol = "VMESS";
           } else if (typeStr.contains("trojan")) {
             protocol = "TROJAN";
-          } else if (typeStr.contains("shadowsocks") || typeStr.contains("ss")) {
+          } else if (typeStr.contains("shadowsocks") ||
+              typeStr.contains("ss")) {
             protocol = "SHADOWSOCKS";
           } else if (typeStr.contains("socks")) {
             protocol = "SOCKS";
@@ -2323,7 +2534,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final Map<String, dynamic> configMap = jsonDecode(configText);
-      
+
       // بازگشایی پورت‌های سراسری 0.0.0.0 برای اشتراک اینترنت محلی (LAN Share)
       configMap['inbounds'] = [
         {
@@ -2335,10 +2546,7 @@ class _HomePageState extends State<HomePage> {
             "enabled": true,
             "destOverride": ["http", "tls", "quic"]
           },
-          "settings": {
-            "auth": "noauth",
-            "udp": true
-          }
+          "settings": {"auth": "noauth", "udp": true}
         },
         {
           "tag": "http-in",
@@ -2349,17 +2557,12 @@ class _HomePageState extends State<HomePage> {
             "enabled": true,
             "destOverride": ["http", "tls", "quic"]
           },
-          "settings": {
-            "timeout": 300
-          }
+          "settings": {"timeout": 300}
         }
       ];
 
       configMap['dns'] = {
-        "servers": [
-          "1.1.1.1",
-          "8.8.8.8"
-        ],
+        "servers": ["1.1.1.1", "8.8.8.8"],
         "queryStrategy": "UseIPv4"
       };
 
@@ -2526,11 +2729,8 @@ class _HomePageState extends State<HomePage> {
       }
 
       // ۶. قانون نهایی (Catch-All): هدایت تضمینی تمام ترافیک‌های بازمانده وب به پروکسی
-      routingRules.add({
-        "type": "field",
-        "network": "tcp,udp",
-        "outboundTag": "proxy"
-      });
+      routingRules
+          .add({"type": "field", "network": "tcp,udp", "outboundTag": "proxy"});
 
       configMap['routing'] = {
         "domainStrategy": "IPIfNonMatch",
@@ -2541,15 +2741,20 @@ class _HomePageState extends State<HomePage> {
 
       for (var outbound in outbounds) {
         if (outbound is Map) {
-          final stream = Map<String, dynamic>.from((outbound['streamSettings'] as Map?) ?? {});
-          final sock = Map<String, dynamic>.from((stream['sockopt'] as Map?) ?? {});
+          final stream = Map<String, dynamic>.from(
+              (outbound['streamSettings'] as Map?) ?? {});
+          final sock =
+              Map<String, dynamic>.from((stream['sockopt'] as Map?) ?? {});
           sock['tcpKeepAliveInterval'] = 15;
           sock['tcpNoDelay'] = true;
 
           if (_isHybridMode) {
             final tag = outbound['tag']?.toString().toLowerCase() ?? '';
             final proto = outbound['protocol']?.toString().toLowerCase() ?? '';
-            if (tag == 'proxy' || proto == 'vless' || proto == 'vmess' || proto == 'trojan') {
+            if (tag == 'proxy' ||
+                proto == 'vless' ||
+                proto == 'vmess' ||
+                proto == 'trojan') {
               sock['dialerProxy'] = 'aether-underlay';
             }
           }
@@ -2573,25 +2778,22 @@ class _HomePageState extends State<HomePage> {
           "protocol": "socks",
           "settings": {
             "servers": [
-              {
-                "address": "127.0.0.1",
-                "port": 1819
-              }
+              {"address": "127.0.0.1", "port": 1819}
             ]
           },
           "streamSettings": {
-            "sockopt": {
-              "tcpKeepAliveInterval": 15
-            }
+            "sockopt": {"tcpKeepAliveInterval": 15}
           }
         });
       }
 
       configMap['outbounds'] = outbounds;
       _fullConfigJson = jsonEncode(configMap);
-      AppLogger.log("CONFIG", "Конфигурация V2Ray успешно создана (${_fullConfigJson.length} символов)");
+      AppLogger.log("CONFIG",
+          "Конфигурация V2Ray успешно создана (${_fullConfigJson.length} символов)");
     } catch (e) {
-      AppLogger.log("CONFIG-ERR", "Ошибка обработки конфигурации: $e", isError: true);
+      AppLogger.log("CONFIG-ERR", "Ошибка обработки конфигурации: $e",
+          isError: true);
     }
   }
 
@@ -2637,7 +2839,8 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 20),
               Text(
                 _t("manual_input_title"),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 15),
@@ -2707,23 +2910,26 @@ class _HomePageState extends State<HomePage> {
       _serversUpdatingMode = false;
     });
 
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10);
     try {
       final cacheBuster = DateTime.now().millisecondsSinceEpoch;
-      final request = await client.getUrl(Uri.parse('$githubRawUrl?cb=$cacheBuster'));
+      final request =
+          await client.getUrl(Uri.parse('$githubRawUrl?cb=$cacheBuster'));
       final response = await request.close();
-      
+
       if (response.statusCode == 200) {
         final body = await response.transform(utf8.decoder).join();
         final List<dynamic> jsonList = jsonDecode(body);
         final List<Map<String, String>> parsed = [];
-        
+
         for (var item in jsonList) {
           if (item is Map<String, dynamic>) {
             final String workerName = item['worker']?.toString() ?? '';
             final String status = item['status']?.toString() ?? 'full';
 
-            if (status != 'exhausted' && !_locallyExhaustedWorkers.contains(workerName)) {
+            if (status != 'exhausted' &&
+                !_locallyExhaustedWorkers.contains(workerName)) {
               parsed.add({
                 'worker': workerName,
                 'uuid': item['uuid']?.toString() ?? '',
@@ -2744,7 +2950,8 @@ class _HomePageState extends State<HomePage> {
 
         if (mounted) {
           setState(() {
-            _fetchedAccounts = parsed.isNotEmpty ? parsed : List.from(_fallbackAccounts);
+            _fetchedAccounts =
+                parsed.isNotEmpty ? parsed : List.from(_fallbackAccounts);
             if (_fetchedAccounts.isNotEmpty) {
               _selectedAccountIndex = 0;
               _updateSelectedConfig();
@@ -2781,16 +2988,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _updateSelectedConfig() {
-    if (_selectedAccountIndex < 0 || _selectedAccountIndex >= _fetchedAccounts.length) return;
+    if (_selectedAccountIndex < 0 ||
+        _selectedAccountIndex >= _fetchedAccounts.length) return;
     final account = _fetchedAccounts[_selectedAccountIndex];
     final String worker = account['worker'] ?? '';
     final String uuid = account['uuid'] ?? '';
     final String path = account['path'] ?? '';
-    
+
     final String targetHost = _isHybridMode ? worker : _fastestIP;
-    final String vlessLink = "vless://$uuid@$targetHost:443?encryption=none&security=tls&sni=$worker&fp=chrome&alpn=http%2F1.1&type=ws&host=$worker&path=${Uri.encodeComponent(path)}#$_serverName";
+    final String vlessLink =
+        "vless://$uuid@$targetHost:443?encryption=none&security=tls&sni=$worker&fp=chrome&alpn=http%2F1.1&type=ws&host=$worker&path=${Uri.encodeComponent(path)}#$_serverName";
     _parseAndSaveConfig(vlessLink, updateUI: false);
-    
+
     if (mounted) {
       setState(() {
         _serverName = "${_t("tab_dashboard")} ${_selectedAccountIndex + 1}";
@@ -2800,7 +3009,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _reportDeltaUsage({int? forceDownload, int? forceUpload}) async {
-    if (_selectedAccountIndex < 0 || _selectedAccountIndex >= _fetchedAccounts.length) return;
+    if (_selectedAccountIndex < 0 ||
+        _selectedAccountIndex >= _fetchedAccounts.length) return;
 
     final int currentDownload = forceDownload ?? v2rayStatus.value.download;
     final int currentUpload = forceUpload ?? v2rayStatus.value.upload;
@@ -2817,23 +3027,28 @@ class _HomePageState extends State<HomePage> {
 
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
     try {
-      final request = await client.postUrl(Uri.parse('$workerApiUrl/api/report'));
+      final request =
+          await client.postUrl(Uri.parse('$workerApiUrl/api/report'));
       request.headers.set('content-type', 'application/json');
-      request.add(utf8.encode(jsonEncode({"worker": activeWorker, "bytes_used": totalDeltaBytes})));
+      request.add(utf8.encode(
+          jsonEncode({"worker": activeWorker, "bytes_used": totalDeltaBytes})));
       final response = await request.close();
       if (response.statusCode == 200) {
         _lastSentDownload = currentDownload;
         _lastSentUpload = currentUpload;
       }
-    } catch (_) {}
-    finally {
+    } catch (_) {
+    } finally {
       client.close();
     }
   }
 
-  void _checkAndAutoSwitchLimit(Map<String, String> currentAccount, int totalBytesSession) async {
-    final int previouslyUsedDatabase = int.tryParse(currentAccount['used_bytes'] ?? '0') ?? 0;
-    final int currentRealtimeDailyUsage = previouslyUsedDatabase + totalBytesSession;
+  void _checkAndAutoSwitchLimit(
+      Map<String, String> currentAccount, int totalBytesSession) async {
+    final int previouslyUsedDatabase =
+        int.tryParse(currentAccount['used_bytes'] ?? '0') ?? 0;
+    final int currentRealtimeDailyUsage =
+        previouslyUsedDatabase + totalBytesSession;
     final String activeWorker = currentAccount['worker'] ?? '';
 
     if (currentRealtimeDailyUsage >= _maxDailyBytes) {
@@ -2860,7 +3075,8 @@ class _HomePageState extends State<HomePage> {
       if (jsonStr != null) {
         final Map<String, dynamic> data = jsonDecode(jsonStr);
         final String savedDate = data['date'] ?? '';
-        final String todayDate = DateTime.now().toIso8601String().substring(0, 10);
+        final String todayDate =
+            DateTime.now().toIso8601String().substring(0, 10);
         if (savedDate == todayDate) {
           final List<dynamic>? workers = data['workers'];
           if (workers != null) {
@@ -2888,7 +3104,8 @@ class _HomePageState extends State<HomePage> {
     final Uri url = Uri.parse(urlString);
     try {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-        _showSnackBar(_l("امکان باز کردن آدرس وجود ندارد", "Не удалось открыть ссылку", "Could not open URL"));
+        _showSnackBar(_l("امکان باز کردن آدرس وجود ندارد",
+            "Не удалось открыть ссылку", "Could not open URL"));
       }
     } catch (e) {
       _showSnackBar(_l("خطا: $e", "Ошибка: $e", "Error: $e"));
@@ -2910,7 +3127,8 @@ class _HomePageState extends State<HomePage> {
               Icon(Icons.favorite_rounded, color: Colors.amberAccent, size: 24),
               SizedBox(width: 10),
               Text(
-                _l('حمایت مالی از پروژه (Donate)', 'Поддержать проект (Donate)', 'Donate to Project'),
+                _l('حمایت مالی از پروژه (Donate)', 'Поддержать проект (Donate)',
+                    'Donate to Project'),
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
@@ -2920,8 +3138,13 @@ class _HomePageState extends State<HomePage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(_l('با حمایت مالی خود، به پایداری، ارتقا و نگهداری سرورهای ضدسانسور RedCloud کمک می‌کنید. بی‌نهایت سپاسگزاریم! ❤️', 'Ваша поддержка помогает содержать и развивать антицензурные сервера RedCloud. Большое спасибо! ❤️', 'Your support helps maintain and develop RedCloud anti-censorship servers. Thank you very much! ❤️'),
-                  style: TextStyle(fontSize: 12.5, color: Colors.white70, height: 1.6),
+                Text(
+                  _l(
+                      'با حمایت مالی خود، به پایداری، ارتقا و نگهداری سرورهای ضدسانسور RedCloud کمک می‌کنید. بی‌نهایت سپاسگزاریم! ❤️',
+                      'Ваша поддержка помогает содержать и развивать антицензурные сервера RedCloud. Большое спасибо! ❤️',
+                      'Your support helps maintain and develop RedCloud anti-censorship servers. Thank you very much! ❤️'),
+                  style: TextStyle(
+                      fontSize: 12.5, color: Colors.white70, height: 1.6),
                   textAlign: TextAlign.justify,
                 ),
                 const SizedBox(height: 16),
@@ -2944,30 +3167,44 @@ class _HomePageState extends State<HomePage> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.currency_bitcoin_rounded, color: Colors.greenAccent, size: 18),
+                              Icon(Icons.currency_bitcoin_rounded,
+                                  color: Colors.greenAccent, size: 18),
                               SizedBox(width: 6),
                               Text(
-                                _l('ارز: USDT (Tether)', 'Валюتا: USDT (Tether)', 'Currency: USDT (Tether)'),
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                                _l(
+                                    'ارز: USDT (Tether)',
+                                    'Валюتا: USDT (Tether)',
+                                    'Currency: USDT (Tether)'),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.greenAccent),
                               ),
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
                             decoration: BoxDecoration(
                               color: Colors.amber.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                              border: Border.all(
+                                  color: Colors.amber.withOpacity(0.4)),
                             ),
                             child: const Text(
                               'BNB Smart Chain (BEP20)',
-                              style: TextStyle(fontSize: 10, color: Colors.amber, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.amber,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 14),
-                      Text(_l('آدرس کیف پول:', 'Адрес кошельکа:', 'Wallet Address:'),
+                      Text(
+                        _l('آدرس کیف پول:', 'Адрес кошельکа:',
+                            'Wallet Address:'),
                         style: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       const SizedBox(height: 4),
@@ -2985,18 +3222,29 @@ class _HomePageState extends State<HomePage> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            Clipboard.setData(const ClipboardData(text: usdtBnbAddress));
+                            Clipboard.setData(
+                                const ClipboardData(text: usdtBnbAddress));
                             Navigator.pop(context);
-                            _showSnackBar(_l('آدرس ولت با موفقیت کپی شد! تشکر از حمایت شما ❤️', 'Адрес кошелька скопирован! Спасибо за поддержку! ❤️', 'Wallet address copied! Thank you for your support! ❤️'));
+                            _showSnackBar(_l(
+                                'آدرس ولت با موفقیت کپی شد! تشکر از حمایت شما ❤️',
+                                'Адрес кошелька скопирован! Спасибо за поддержку! ❤️',
+                                'Wallet address copied! Thank you for your support! ❤️'));
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3B82F6),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                             padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
-                          icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 16),
-                          label: Text(_l('کپی آدرس کیف پول', 'Скопировать адрес кошелька', 'Copy Wallet Address'),
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                          icon: const Icon(Icons.copy_rounded,
+                              color: Colors.white, size: 16),
+                          label: Text(
+                            _l('کپی آدرس کیف پول', 'Скопировать адрес кошелька',
+                                'Copy Wallet Address'),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12),
                           ),
                         ),
                       )
@@ -3009,7 +3257,8 @@ class _HomePageState extends State<HomePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(_l('بستن', 'Закрыть', 'Close'), style: const TextStyle(color: Colors.grey)),
+              child: Text(_l('بستن', 'Закрыть', 'Close'),
+                  style: const TextStyle(color: Colors.grey)),
             ),
           ],
         );
@@ -3045,12 +3294,19 @@ class _HomePageState extends State<HomePage> {
                 SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00F2FE)),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Color(0xFF00F2FE)),
                 ),
                 SizedBox(width: 12),
                 Text(
-                  _l("در حال شناسایی مشخصات سرور خروجی...", "Определение параметров внешнего сервера...", "Identifying exit server details..."),
-                  style: TextStyle(fontSize: 12, color: Color(0xFF00F2FE), fontWeight: FontWeight.bold),
+                  _l(
+                      "در حال شناسایی مشخصات سرور خروجی...",
+                      "Определение параметров внешнего сервера...",
+                      "Identifying exit server details..."),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF00F2FE),
+                      fontWeight: FontWeight.bold),
                 ),
               ],
             )
@@ -3098,18 +3354,21 @@ class _HomePageState extends State<HomePage> {
                           GestureDetector(
                             onTap: () {
                               if (_publicIp != null) {
-                                Clipboard.setData(ClipboardData(text: _publicIp!));
+                                Clipboard.setData(
+                                    ClipboardData(text: _publicIp!));
                                 _showSnackBar(_t("copied_msg"));
                               }
                             },
-                            child: const Icon(Icons.copy_rounded, size: 13, color: Colors.grey),
+                            child: const Icon(Icons.copy_rounded,
+                                size: 13, color: Colors.grey),
                           ),
                         ],
                       ),
                       const SizedBox(height: 3),
                       Text(
                         _ipCountry ?? "Connected via RedCloud",
-                        style: const TextStyle(fontSize: 11, color: Colors.white60),
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.white60),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -3119,26 +3378,33 @@ class _HomePageState extends State<HomePage> {
                 if (_realPingMs != null)
                   Container(
                     margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFF10B981).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
+                      border: Border.all(
+                          color: const Color(0xFF10B981).withOpacity(0.4)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF10B981)),
+                        const Icon(Icons.bolt_rounded,
+                            size: 14, color: Color(0xFF10B981)),
                         const SizedBox(width: 2),
                         Text(
                           "$_realPingMs ms",
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF10B981)),
                         ),
                       ],
                     ),
                   ),
                 IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 18, color: Color(0xFF00F2FE)),
+                  icon: const Icon(Icons.refresh_rounded,
+                      size: 18, color: Color(0xFF00F2FE)),
                   tooltip: "Re-test",
                   onPressed: _fetchPublicIpAndPing,
                 ),
@@ -3150,25 +3416,29 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: widget.currentLang == "fa" ? TextDirection.rtl : TextDirection.ltr,
+      textDirection:
+          widget.currentLang == "fa" ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
             _t("app_title"),
-            style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, letterSpacing: 1.2),
           ),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
             IconButton(
-              icon: const Icon(Icons.qr_code_2_rounded, color: Color(0xFF00F2FE), size: 23),
+              icon: const Icon(Icons.qr_code_2_rounded,
+                  color: Color(0xFF00F2FE), size: 23),
               tooltip: "LAN Share & QR",
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => LanShareScreen(currentLang: widget.currentLang),
+                    builder: (context) =>
+                        LanShareScreen(currentLang: widget.currentLang),
                   ),
                 );
               },
@@ -3177,7 +3447,8 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsetsDirectional.only(end: 12.0),
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFF00F2FE).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(10),
@@ -3212,7 +3483,8 @@ class _HomePageState extends State<HomePage> {
             if (_bannerMessage != null)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: _bannerColor.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(12),
@@ -3225,7 +3497,10 @@ class _HomePageState extends State<HomePage> {
                     Expanded(
                       child: Text(
                         _bannerMessage!,
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _bannerColor),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _bannerColor),
                       ),
                     ),
                   ],
@@ -3286,7 +3561,9 @@ class _HomePageState extends State<HomePage> {
         margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
-          color: widget.isDarkMode ? const Color(0xFF0C1322) : const Color(0xFFFFFFFF),
+          color: widget.isDarkMode
+              ? const Color(0xFF0C1322)
+              : const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
             color: activeColor.withOpacity(0.38),
@@ -3332,7 +3609,9 @@ class _HomePageState extends State<HomePage> {
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isSelected ? itemColor.withOpacity(0.45) : Colors.transparent,
+                      color: isSelected
+                          ? itemColor.withOpacity(0.45)
+                          : Colors.transparent,
                       width: 1,
                     ),
                   ),
@@ -3349,7 +3628,8 @@ class _HomePageState extends State<HomePage> {
                         tab['title'] as String,
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected ? itemColor : Colors.grey.shade500,
                         ),
                         maxLines: 1,
@@ -3368,14 +3648,22 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildCurrentTabContent() {
     switch (_currentTabIndex) {
-      case 0: return _buildDashboardTab();
-      case 1: return _buildAetherTab();
-      case 2: return _buildTorTab();
-      case 3: return _buildPsiphonTab();
-      case 4: return _buildSettingsTab();
-      case 5: return _buildPrivacyTab();
-      case 6: return _buildContactTab();
-      default: return _buildDashboardTab();
+      case 0:
+        return _buildDashboardTab();
+      case 1:
+        return _buildAetherTab();
+      case 2:
+        return _buildTorTab();
+      case 3:
+        return _buildPsiphonTab();
+      case 4:
+        return _buildSettingsTab();
+      case 5:
+        return _buildPrivacyTab();
+      case 6:
+        return _buildContactTab();
+      default:
+        return _buildDashboardTab();
     }
   }
 
@@ -3388,8 +3676,10 @@ class _HomePageState extends State<HomePage> {
     try {
       final cleanRemote = remoteVer.toLowerCase().replaceAll('v', '').trim();
       final cleanCurrent = currentVer.toLowerCase().replaceAll('v', '').trim();
-      final remoteParts = cleanRemote.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      final currentParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final remoteParts =
+          cleanRemote.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final currentParts =
+          cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
       for (int i = 0; i < 3; i++) {
         final r = i < remoteParts.length ? remoteParts[i] : 0;
@@ -3403,12 +3693,17 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _checkForAppUpdate({bool silent = false}) async {
     if (!silent) {
-      _showSnackBar(_l("در حال بررسی آخرین نسخه در گیت‌هاب...", "Проверка обновлений на GitHub...", "Checking for updates on GitHub..."));
+      _showSnackBar(_l(
+          "در حال بررسی آخرین نسخه در گیت‌هاب...",
+          "Проверка обновлений на GitHub...",
+          "Checking for updates on GitHub..."));
     }
 
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
-      final request = await client.getUrl(Uri.parse("https://api.github.com/repos/Devtahas/RedCloud-Android/releases/latest"));
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 8);
+      final request = await client.getUrl(Uri.parse(
+          "https://api.github.com/repos/Devtahas/RedCloud-Android/releases/latest"));
       request.headers.set("Accept", "application/vnd.github.v3+json");
       request.headers.set("User-Agent", "RedCloud-Android-Client");
       final response = await request.close();
@@ -3428,13 +3723,15 @@ class _HomePageState extends State<HomePage> {
 
           String deviceAbi = "arm64-v8a";
           try {
-            deviceAbi = await _lanChannel.invokeMethod('getDeviceAbi') ?? "arm64-v8a";
+            deviceAbi =
+                await _lanChannel.invokeMethod('getDeviceAbi') ?? "arm64-v8a";
           } catch (_) {}
 
           // ۱. ابتدا جستجو برای معماری اختصاصی گوشی (مثلاً arm64-v8a)
           for (var a in assets) {
             final name = (a["name"] ?? "").toString().toLowerCase();
-            if (name.contains(deviceAbi.toLowerCase()) && name.endsWith(".apk")) {
+            if (name.contains(deviceAbi.toLowerCase()) &&
+                name.endsWith(".apk")) {
               downloadUrl = a["browser_download_url"] ?? "";
               fileSize = a["size"] ?? 0;
               assetName = a["name"] ?? "";
@@ -3479,17 +3776,24 @@ class _HomePageState extends State<HomePage> {
           }
         } else {
           if (!silent && mounted) {
-            _showSnackBar(_l("شما در حال استفاده از آخرین نسخه هستید ($tagName).", "Вы используете последнюю версию ($tagName).", "You are using the latest version ($tagName)."));
+            _showSnackBar(_l(
+                "شما در حال استفاده از آخرین نسخه هستید ($tagName).",
+                "Вы используете последнюю версию ($tagName).",
+                "You are using the latest version ($tagName)."));
           }
         }
       } else {
         if (!silent && mounted) {
-          _showSnackBar(_l("امکان دریافت اطلاعات آپدیت وجود ندارد.", "Не удалось получить информацию об обновлении.", "Could not fetch update info."));
+          _showSnackBar(_l(
+              "امکان دریافت اطلاعات آپدیت وجود ندارد.",
+              "Не удалось получить информацию об обновлении.",
+              "Could not fetch update info."));
         }
       }
     } catch (_) {
       if (!silent && mounted) {
-        _showSnackBar(_l("خطا در اتصال به سرور گیت‌هاب.", "Ошибка подключения к GitHub.", "Failed to connect to GitHub."));
+        _showSnackBar(_l("خطا در اتصال به سرور گیت‌هاب.",
+            "Ошибка подключения к GitHub.", "Failed to connect to GitHub."));
       }
     }
   }
@@ -3521,7 +3825,8 @@ class _HomePageState extends State<HomePage> {
                 color: const Color(0xFF00F2FE).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.rocket_launch_rounded, color: Color(0xFF00F2FE), size: 24),
+              child: const Icon(Icons.rocket_launch_rounded,
+                  color: Color(0xFF00F2FE), size: 24),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -3529,12 +3834,19 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _l("بروزرسانی جدید آمد!", "Доступно новое обновление!", "New Update Available!"),
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                    _l("بروزرسانی جدید آمد!", "Доступно новое обновление!",
+                        "New Update Available!"),
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                   Text(
                     "v$_currentVersionTag  ➔  $newVersion ($sizeMb MB)",
-                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF00F2FE), fontFamily: 'monospace'),
+                    style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF00F2FE),
+                        fontFamily: 'monospace'),
                   ),
                 ],
               ),
@@ -3546,7 +3858,10 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              _l("آیا مایلید نسخه جدید را دانلود و نصب کنید؟", "Хотите скачать и установить новую версию?", "Would you like to download and install this update?"),
+              _l(
+                  "آیا مایلید نسخه جدید را دانلود و نصب کنید؟",
+                  "Хотите скачать и установить новую версию?",
+                  "Would you like to download and install this update?"),
               style: const TextStyle(fontSize: 12.5, color: Colors.white70),
             ),
             const SizedBox(height: 12),
@@ -3562,7 +3877,8 @@ class _HomePageState extends State<HomePage> {
                 child: SingleChildScrollView(
                   child: Text(
                     changelog,
-                    style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.5),
+                    style: const TextStyle(
+                        fontSize: 11, color: Colors.white60, height: 1.5),
                   ),
                 ),
               ),
@@ -3572,17 +3888,20 @@ class _HomePageState extends State<HomePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: Text(_l("خیر (بعداً)", "Позже", "Later"), style: const TextStyle(color: Colors.grey)),
+            child: Text(_l("خیر (بعداً)", "Позже", "Later"),
+                style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(dialogCtx);
-              _startDownloadAndInstall(downloadUrl: downloadUrl, totalBytes: fileSize);
+              _startDownloadAndInstall(
+                  downloadUrl: downloadUrl, totalBytes: fileSize);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF00F2FE),
               foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             ),
             icon: const Icon(Icons.download_rounded, size: 18),
@@ -3596,7 +3915,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _startDownloadAndInstall({required String downloadUrl, required int totalBytes}) async {
+  void _startDownloadAndInstall(
+      {required String downloadUrl, required int totalBytes}) async {
     final isFa = widget.currentLang == "fa";
     double progress = 0.0;
     int downloadedBytes = 0;
@@ -3610,7 +3930,8 @@ class _HomePageState extends State<HomePage> {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             final percent = (progress * 100).clamp(0, 100).toInt();
-            final currentMb = (downloadedBytes / (1024 * 1024)).toStringAsFixed(1);
+            final currentMb =
+                (downloadedBytes / (1024 * 1024)).toStringAsFixed(1);
             final totalMb = (totalBytes / (1024 * 1024)).toStringAsFixed(1);
 
             return AlertDialog(
@@ -3624,12 +3945,17 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF00F2FE)),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.5, color: Color(0xFF00F2FE)),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    _l("در حال دانلود بروزرسانی...", "Загрузка обновления...", "Downloading Update..."),
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                    _l("در حال دانلود بروزرسانی...", "Загрузка обновления...",
+                        "Downloading Update..."),
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ],
               ),
@@ -3642,11 +3968,18 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Text(
                         "$currentMb MB / $totalMb MB",
-                        style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'monospace'),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                            fontFamily: 'monospace'),
                       ),
                       Text(
                         "$percent%",
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE), fontFamily: 'monospace'),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF00F2FE),
+                            fontFamily: 'monospace'),
                       ),
                     ],
                   ),
@@ -3656,7 +3989,8 @@ class _HomePageState extends State<HomePage> {
                     child: LinearProgressIndicator(
                       value: progress > 0 ? progress : null,
                       backgroundColor: Colors.white12,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00F2FE)),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF00F2FE)),
                       minHeight: 8,
                     ),
                   ),
@@ -3668,7 +4002,8 @@ class _HomePageState extends State<HomePage> {
                     isCancelled = true;
                     Navigator.pop(progressCtx);
                   },
-                  child: Text(_l("لغو دانلود", "Отмена", "Cancel"), style: const TextStyle(color: Colors.redAccent)),
+                  child: Text(_l("لغو دانلود", "Отмена", "Cancel"),
+                      style: const TextStyle(color: Colors.redAccent)),
                 ),
               ],
             );
@@ -3679,11 +4014,13 @@ class _HomePageState extends State<HomePage> {
 
     // شروع فرآیند دانلود با هندل کردن خودکار ریدایرکت‌های گیت‌هاب به Amazon S3
     try {
-      final String cacheDir = await _lanChannel.invokeMethod('getAppCacheDir') ?? "";
+      final String cacheDir =
+          await _lanChannel.invokeMethod('getAppCacheDir') ?? "";
       final saveFile = File("$cacheDir/update.apk");
       if (await saveFile.exists()) await saveFile.delete();
 
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 15);
       final request = await client.getUrl(Uri.parse(downloadUrl));
       request.followRedirects = true;
       request.headers.set("User-Agent", "RedCloud-Android-Client");
@@ -3691,7 +4028,8 @@ class _HomePageState extends State<HomePage> {
 
       if (response.statusCode == 200) {
         final sink = saveFile.openWrite();
-        final effectiveTotal = response.contentLength > 0 ? response.contentLength : totalBytes;
+        final effectiveTotal =
+            response.contentLength > 0 ? response.contentLength : totalBytes;
 
         response.listen(
           (chunk) {
@@ -3716,21 +4054,29 @@ class _HomePageState extends State<HomePage> {
               Navigator.pop(context);
             }
 
-            _showSnackBar(_l("دانلود با موفقیت انجام شد! در حال باز کردن نصاب...", "Загрузка завершена! Запуск установщика...", "Download completed! Launching installer..."));
+            _showSnackBar(_l(
+                "دانلود با موفقیت انجام شد! در حال باز کردن نصاب...",
+                "Загрузка завершена! Запуск установщика...",
+                "Download completed! Launching installer..."));
 
             // فراخوانی صفحهٔ رسمی نصب اندروید
-            await _lanChannel.invokeMethod('installApk', {'filePath': saveFile.path});
+            await _lanChannel
+                .invokeMethod('installApk', {'filePath': saveFile.path});
           },
           onError: (e) {
             sink.close();
             if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-            _showSnackBar(_l("خطا در دانلود فایل آپدیت: $e", "Ошибка загрузки файла обновления: $e", "Download failed: $e"));
+            _showSnackBar(_l("خطا در دانلود فایل آپدیت: $e",
+                "Ошибка загрузки файла обновления: $e", "Download failed: $e"));
           },
           cancelOnError: true,
         );
       } else {
         if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-        _showSnackBar(_l("خطای سرور دانلود (کد ${response.statusCode})", "Ошибка сервера загрузки (код ${response.statusCode})", "Server error (${response.statusCode})"));
+        _showSnackBar(_l(
+            "خطای سرور دانلود (کد ${response.statusCode})",
+            "Ошибка сервера загрузки (код ${response.statusCode})",
+            "Server error (${response.statusCode})"));
       }
     } catch (e) {
       if (mounted && Navigator.canPop(context)) Navigator.pop(context);
@@ -3742,10 +4088,12 @@ class _HomePageState extends State<HomePage> {
     return ValueListenableBuilder<V2RayStatus>(
       valueListenable: v2rayStatus,
       builder: (context, value, child) {
-        final isConnected = _activeEngine == ActiveEngine.dashboard && value.state == "CONNECTED";
-        final isConnecting = (_activeEngine == ActiveEngine.dashboard && value.state == "CONNECTING") || 
-                             _isScanningIPs || 
-                             (_isTransitioning && _activeEngine == ActiveEngine.dashboard);
+        final isConnected = _activeEngine == ActiveEngine.dashboard &&
+            value.state == "CONNECTED";
+        final isConnecting = (_activeEngine == ActiveEngine.dashboard &&
+                value.state == "CONNECTING") ||
+            _isScanningIPs ||
+            (_isTransitioning && _activeEngine == ActiveEngine.dashboard);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
@@ -3758,12 +4106,17 @@ class _HomePageState extends State<HomePage> {
                   // کلید هیبریدی (نئون فیروزه‌ای)
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _isHybridMode ? const Color(0xFF00F2FE).withOpacity(0.12) : const Color(0xFF101726),
+                        color: _isHybridMode
+                            ? const Color(0xFF00F2FE).withOpacity(0.12)
+                            : const Color(0xFF101726),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: _isHybridMode ? const Color(0xFF00F2FE) : Colors.white12,
+                          color: _isHybridMode
+                              ? const Color(0xFF00F2FE)
+                              : Colors.white12,
                           width: 1.2,
                         ),
                         boxShadow: [
@@ -3784,7 +4137,9 @@ class _HomePageState extends State<HomePage> {
                               Icon(
                                 Icons.hub_rounded,
                                 size: 15,
-                                color: _isHybridMode ? const Color(0xFF00F2FE) : Colors.grey,
+                                color: _isHybridMode
+                                    ? const Color(0xFF00F2FE)
+                                    : Colors.grey,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -3792,7 +4147,9 @@ class _HomePageState extends State<HomePage> {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: _isHybridMode ? const Color(0xFF00F2FE) : Colors.grey,
+                                  color: _isHybridMode
+                                      ? const Color(0xFF00F2FE)
+                                      : Colors.grey,
                                 ),
                               ),
                             ],
@@ -3802,10 +4159,12 @@ class _HomePageState extends State<HomePage> {
                             child: Switch(
                               value: _isHybridMode,
                               activeColor: const Color(0xFF00F2FE),
-                              activeTrackColor: const Color(0xFF00F2FE).withOpacity(0.3),
+                              activeTrackColor:
+                                  const Color(0xFF00F2FE).withOpacity(0.3),
                               inactiveThumbColor: Colors.grey,
                               inactiveTrackColor: Colors.white10,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                               onChanged: (isConnected || isConnecting)
                                   ? null
                                   : (val) => _setHybridModeSetting(val),
@@ -3819,12 +4178,17 @@ class _HomePageState extends State<HomePage> {
                   // کلید دور زدن ایران (سبز زمردی)
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _bypassIran ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFF101726),
+                        color: _bypassIran
+                            ? const Color(0xFF10B981).withOpacity(0.12)
+                            : const Color(0xFF101726),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: _bypassIran ? const Color(0xFF10B981) : Colors.white12,
+                          color: _bypassIran
+                              ? const Color(0xFF10B981)
+                              : Colors.white12,
                           width: 1.2,
                         ),
                       ),
@@ -3837,7 +4201,9 @@ class _HomePageState extends State<HomePage> {
                               Icon(
                                 Icons.shield_rounded,
                                 size: 15,
-                                color: _bypassIran ? const Color(0xFF10B981) : Colors.grey,
+                                color: _bypassIran
+                                    ? const Color(0xFF10B981)
+                                    : Colors.grey,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -3845,7 +4211,9 @@ class _HomePageState extends State<HomePage> {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: _bypassIran ? const Color(0xFF10B981) : Colors.grey,
+                                  color: _bypassIran
+                                      ? const Color(0xFF10B981)
+                                      : Colors.grey,
                                 ),
                               ),
                             ],
@@ -3855,10 +4223,12 @@ class _HomePageState extends State<HomePage> {
                             child: Switch(
                               value: _bypassIran,
                               activeColor: const Color(0xFF10B981),
-                              activeTrackColor: const Color(0xFF10B981).withOpacity(0.3),
+                              activeTrackColor:
+                                  const Color(0xFF10B981).withOpacity(0.3),
                               inactiveThumbColor: Colors.grey,
                               inactiveTrackColor: Colors.white10,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                               onChanged: (isConnected || isConnecting)
                                   ? null
                                   : (val) => _setBypassIranSetting(val),
@@ -3875,7 +4245,8 @@ class _HomePageState extends State<HomePage> {
 
               // انتخاب‌گر اکانت‌های هوشمند
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(14),
@@ -3883,7 +4254,8 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.dns_rounded, size: 16, color: Color(0xFF00F2FE)),
+                    const Icon(Icons.dns_rounded,
+                        size: 16, color: Color(0xFF00F2FE)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: _isLoadingAccounts
@@ -3891,22 +4263,29 @@ class _HomePageState extends State<HomePage> {
                               child: SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00F2FE)),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Color(0xFF00F2FE)),
                               ),
                             )
                           : SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: Row(
-                                children: List.generate(_fetchedAccounts.length, (index) {
-                                  final isSelected = _selectedAccountIndex == index;
+                                children: List.generate(_fetchedAccounts.length,
+                                    (index) {
+                                  final isSelected =
+                                      _selectedAccountIndex == index;
                                   return Padding(
                                     padding: const EdgeInsets.only(right: 6.0),
                                     child: ChoiceChip(
                                       label: Text("Server ${index + 1}"),
                                       labelStyle: TextStyle(
                                         fontSize: 11,
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                        color: isSelected ? Colors.black : Colors.white70,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                        color: isSelected
+                                            ? Colors.black
+                                            : Colors.white70,
                                       ),
                                       selected: isSelected,
                                       selectedColor: const Color(0xFF00F2FE),
@@ -3926,8 +4305,12 @@ class _HomePageState extends State<HomePage> {
                             ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.tune_rounded, color: Color(0xFF00F2FE), size: 19),
-                      tooltip: _l("مدیریت سرورها و سابسکریپشن", "Управление серверами и подписками", "Servers & Subscription Management"),
+                      icon: const Icon(Icons.tune_rounded,
+                          color: Color(0xFF00F2FE), size: 19),
+                      tooltip: _l(
+                          "مدیریت سرورها و سابسکریپشن",
+                          "Управление серверами и подписками",
+                          "Servers & Subscription Management"),
                       onPressed: () async {
                         final selectedConfig = await Navigator.push(
                           context,
@@ -3938,14 +4321,20 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         );
-                        if (selectedConfig != null && selectedConfig is Map<String, dynamic>) {
-                          _parseAndSaveConfig(selectedConfig['rawLink'] ?? '', updateUI: true);
-                          _showSnackBar(_l("سرور '${selectedConfig['name']}' فعال شد.", "Сервер '${selectedConfig['name']}' активирован.", "Server '${selectedConfig['name']}' activated."));
+                        if (selectedConfig != null &&
+                            selectedConfig is Map<String, dynamic>) {
+                          _parseAndSaveConfig(selectedConfig['rawLink'] ?? '',
+                              updateUI: true);
+                          _showSnackBar(_l(
+                              "سرور '${selectedConfig['name']}' فعال شد.",
+                              "Сервер '${selectedConfig['name']}' активирован.",
+                              "Server '${selectedConfig['name']}' activated."));
                         }
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Icons.sync_rounded, color: Color(0xFF00F2FE), size: 18),
+                      icon: const Icon(Icons.sync_rounded,
+                          color: Color(0xFF00F2FE), size: 18),
                       tooltip: "Sync Accounts",
                       onPressed: () => _fetchAndLoadAccounts(showMessage: true),
                     ),
@@ -3960,7 +4349,8 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   children: [
                     GestureDetector(
-                      onTap: isConnected ? _disconnectCurrent : _connectDashboard,
+                      onTap:
+                          isConnected ? _disconnectCurrent : _connectDashboard,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 350),
                         width: 175,
@@ -3984,7 +4374,8 @@ class _HomePageState extends State<HomePage> {
                                 spreadRadius: 6,
                               ),
                               BoxShadow(
-                                color: const Color(0xFF00F2FE).withOpacity(0.15),
+                                color:
+                                    const Color(0xFF00F2FE).withOpacity(0.15),
                                 blurRadius: 60,
                                 spreadRadius: 15,
                               ),
@@ -4005,7 +4396,8 @@ class _HomePageState extends State<HomePage> {
                                 width: 50,
                                 height: 50,
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFFF59E0B)),
                                   strokeWidth: 4,
                                 ),
                               )
@@ -4041,8 +4433,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      _isHybridMode ? "Tap to connect (Hybrid)" : "Tap to connect (Direct)",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                      _isHybridMode
+                          ? "Tap to connect (Hybrid)"
+                          : "Tap to connect (Direct)",
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -4062,7 +4459,8 @@ class _HomePageState extends State<HomePage> {
 
               // نوار تحتانی Live Defense و نشانگر لایه اَتر
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(14),
@@ -4073,24 +4471,39 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.radar_rounded, size: 16, color: Color(0xFF00F2FE)),
+                        const Icon(Icons.radar_rounded,
+                            size: 16, color: Color(0xFF00F2FE)),
                         const SizedBox(width: 8),
                         Text(
-                          _isHybridMode ? "Live Defense & Chained Radar" : "Standard V2Ray Protection",
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white70),
+                          _isHybridMode
+                              ? "Live Defense & Chained Radar"
+                              : "Standard V2Ray Protection",
+                          style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white70),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: const Color(0xFF10B981).withOpacity(0.15),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                        border: Border.all(
+                            color: const Color(0xFF10B981).withOpacity(0.3)),
                       ),
                       child: Text(
-                        _isHybridMode && _hybridStatusText.isNotEmpty ? "Aether: $_hybridStatusText" : (_isHybridMode ? "Aether: Active" : "Direct: Active"),
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                        _isHybridMode && _hybridStatusText.isNotEmpty
+                            ? "Aether: $_hybridStatusText"
+                            : (_isHybridMode
+                                ? "Aether: Active"
+                                : "Direct: Active"),
+                        style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF10B981)),
                       ),
                     ),
                   ],
@@ -4109,9 +4522,11 @@ class _HomePageState extends State<HomePage> {
     return ValueListenableBuilder<V2RayStatus>(
       valueListenable: v2rayStatus,
       builder: (context, value, child) {
-        final isConnected = _activeEngine == ActiveEngine.aether && value.state == "CONNECTED";
-        final isConnecting = (_activeEngine == ActiveEngine.aether && value.state == "CONNECTING") ||
-                             (_isTransitioning && _activeEngine == ActiveEngine.none);
+        final isConnected =
+            _activeEngine == ActiveEngine.aether && value.state == "CONNECTED";
+        final isConnecting = (_activeEngine == ActiveEngine.aether &&
+                value.state == "CONNECTING") ||
+            (_isTransitioning && _activeEngine == ActiveEngine.none);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
@@ -4120,7 +4535,8 @@ class _HomePageState extends State<HomePage> {
             children: [
               // کارت فوق‌پیشرفته استخر کلیدهای ضدسانسور ATC
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(16),
@@ -4143,7 +4559,8 @@ class _HomePageState extends State<HomePage> {
                         color: const Color(0xFF06B6D4).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.vpn_key_rounded, size: 20, color: Color(0xFF06B6D4)),
+                      child: const Icon(Icons.vpn_key_rounded,
+                          size: 20, color: Color(0xFF06B6D4)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -4152,40 +4569,67 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           Row(
                             children: [
-                              Text(_l("استخر کلید (ATC): ", "Пул ключей (ATC): ", "ATC Key Pool: "),
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70),
+                              Text(
+                                _l("استخر کلید (ATC): ", "Пул ключей (ATC): ",
+                                    "ATC Key Pool: "),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white70),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF06B6D4).withOpacity(0.15),
+                                  color:
+                                      const Color(0xFF06B6D4).withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: const Color(0xFF06B6D4).withOpacity(0.4)),
+                                  border: Border.all(
+                                      color: const Color(0xFF06B6D4)
+                                          .withOpacity(0.4)),
                                 ),
                                 child: Text(
-                                  _atcAccountName.isNotEmpty && _atcAccountName != "نامشخص" && _atcAccountName != "Неизвестно" ? _atcAccountName : _l("آماده بارگذاری", "Готово к загрузке", "Ready to load"),
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF06B6D4)),
+                                  _atcAccountName.isNotEmpty &&
+                                          _atcAccountName != "نامشخص" &&
+                                          _atcAccountName != "Неизвестно"
+                                      ? _atcAccountName
+                                      : _l("آماده بارگذاری",
+                                          "Готово к загрузке", "Ready to load"),
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF06B6D4)),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            _l("انقضا و چرخش خودکار: $_atcRemainingDays روز باقی‌مانده", "Срок действия и авторотация: осталось дней: $_atcRemainingDays", "Expiration & Auto-rotate: $_atcRemainingDays days remaining"),
-                            style: const TextStyle(fontSize: 10.5, color: Colors.grey),
+                            _l(
+                                "انقضا و چرخش خودکار: $_atcRemainingDays روز باقی‌مانده",
+                                "Срок действия и авторотация: осталось дней: $_atcRemainingDays",
+                                "Expiration & Auto-rotate: $_atcRemainingDays days remaining"),
+                            style: const TextStyle(
+                                fontSize: 10.5, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.autorenew_rounded, size: 20, color: Color(0xFF06B6D4)),
-                      tooltip: _l("تعویض تصادفی اکانت", "Случайная смеنا аккаунта", "Random account reset"),
+                      icon: const Icon(Icons.autorenew_rounded,
+                          size: 20, color: Color(0xFF06B6D4)),
+                      tooltip: _l("تعویض تصادفی اکانت",
+                          "Случайная смеنا аккаунта", "Random account reset"),
                       onPressed: (isConnected || isConnecting)
                           ? null
                           : () async {
-                              await _aetherChannel.invokeMethod('resetIdentity');
+                              await _aetherChannel
+                                  .invokeMethod('resetIdentity');
                               await _fetchAtcInfo();
-                              _showSnackBar(_l("اکانت هویت بازنشانی شد؛ در اتصال بعدی کلید تصادفی جدیدی انتخاب می‌شود.", "Идентификатор аккаунта сброшен; при следующем подключении будет выбран новый случайный ключ.", "Account identity reset; a new random key will be selected on next connection."));
+                              _showSnackBar(_l(
+                                  "اکانت هویت بازنشانی شد؛ در اتصال بعدی کلید تصادفی جدیدی انتخاب می‌شود.",
+                                  "Идентификатор аккаунта сброшен; при следующем подключении будет выбран новый случайный ключ.",
+                                  "Account identity reset; a new random key will be selected on next connection."));
                             },
                     ),
                   ],
@@ -4222,12 +4666,14 @@ class _HomePageState extends State<HomePage> {
                           boxShadow: [
                             if (isConnected) ...[
                               BoxShadow(
-                                color: const Color(0xFF06B6D4).withOpacity(0.45),
+                                color:
+                                    const Color(0xFF06B6D4).withOpacity(0.45),
                                 blurRadius: 35,
                                 spreadRadius: 6,
                               ),
                               BoxShadow(
-                                color: const Color(0xFF06B6D4).withOpacity(0.18),
+                                color:
+                                    const Color(0xFF06B6D4).withOpacity(0.18),
                                 blurRadius: 60,
                                 spreadRadius: 15,
                               ),
@@ -4248,7 +4694,8 @@ class _HomePageState extends State<HomePage> {
                                 width: 50,
                                 height: 50,
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFFF59E0B)),
                                   strokeWidth: 4,
                                 ),
                               )
@@ -4284,8 +4731,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      isConnected ? "Connected to Aether WARP Tunnel" : "Tap to connect (Aether Engine)",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                      isConnected
+                          ? "Connected to Aether WARP Tunnel"
+                          : "Tap to connect (Aether Engine)",
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -4306,11 +4758,15 @@ class _HomePageState extends State<HomePage> {
               // عنوان انتخاب پروتکل‌ها
               Row(
                 children: [
-                  const Icon(Icons.tune_rounded, size: 16, color: Color(0xFF06B6D4)),
+                  const Icon(Icons.tune_rounded,
+                      size: 16, color: Color(0xFF06B6D4)),
                   const SizedBox(width: 8),
                   Text(
                     _t("aether_mode_select"),
-                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ],
               ),
@@ -4374,9 +4830,11 @@ class _HomePageState extends State<HomePage> {
     return ValueListenableBuilder<V2RayStatus>(
       valueListenable: v2rayStatus,
       builder: (context, value, child) {
-        final isConnected = _activeEngine == ActiveEngine.psiphon && value.state == "CONNECTED";
-        final isConnecting = (_activeEngine == ActiveEngine.psiphon && value.state == "CONNECTING") ||
-                             (_isTransitioning && _activeEngine == ActiveEngine.none);
+        final isConnected =
+            _activeEngine == ActiveEngine.psiphon && value.state == "CONNECTED";
+        final isConnecting = (_activeEngine == ActiveEngine.psiphon &&
+                value.state == "CONNECTING") ||
+            (_isTransitioning && _activeEngine == ActiveEngine.none);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
@@ -4385,12 +4843,17 @@ class _HomePageState extends State<HomePage> {
             children: [
               // کلید بالای صفحه: Psiphon over MASQUE Bridge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _isPsiphonHybrid ? const Color(0xFF10B981).withOpacity(0.12) : const Color(0xFF101726),
+                  color: _isPsiphonHybrid
+                      ? const Color(0xFF10B981).withOpacity(0.12)
+                      : const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
-                    color: _isPsiphonHybrid ? const Color(0xFF10B981) : Colors.white12,
+                    color: _isPsiphonHybrid
+                        ? const Color(0xFF10B981)
+                        : Colors.white12,
                     width: 1.3,
                   ),
                   boxShadow: [
@@ -4410,7 +4873,9 @@ class _HomePageState extends State<HomePage> {
                         Icon(
                           Icons.hub_rounded,
                           size: 16,
-                          color: _isPsiphonHybrid ? const Color(0xFF10B981) : Colors.grey,
+                          color: _isPsiphonHybrid
+                              ? const Color(0xFF10B981)
+                              : Colors.grey,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -4418,7 +4883,9 @@ class _HomePageState extends State<HomePage> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: _isPsiphonHybrid ? const Color(0xFF10B981) : Colors.grey,
+                            color: _isPsiphonHybrid
+                                ? const Color(0xFF10B981)
+                                : Colors.grey,
                           ),
                         ),
                       ],
@@ -4428,7 +4895,8 @@ class _HomePageState extends State<HomePage> {
                       child: Switch(
                         value: _isPsiphonHybrid,
                         activeColor: const Color(0xFF10B981),
-                        activeTrackColor: const Color(0xFF10B981).withOpacity(0.3),
+                        activeTrackColor:
+                            const Color(0xFF10B981).withOpacity(0.3),
                         inactiveThumbColor: Colors.grey,
                         inactiveTrackColor: Colors.white10,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -4445,12 +4913,15 @@ class _HomePageState extends State<HomePage> {
 
               // باکس اختصاصی Advanced Engine (CDN Fronting) - واکنش‌گرا و بدون سرریز
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: _isPsiphonCdnFronting ? const Color(0xFF10B981) : Colors.white10,
+                    color: _isPsiphonCdnFronting
+                        ? const Color(0xFF10B981)
+                        : Colors.white10,
                     width: _isPsiphonCdnFronting ? 1.4 : 1.0,
                   ),
                   boxShadow: [
@@ -4466,14 +4937,16 @@ class _HomePageState extends State<HomePage> {
                     Container(
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: _isPsiphonCdnFronting 
-                            ? const Color(0xFF10B981).withOpacity(0.18) 
+                        color: _isPsiphonCdnFronting
+                            ? const Color(0xFF10B981).withOpacity(0.18)
                             : Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
-                        Icons.cloud_sync_rounded, 
-                        color: _isPsiphonCdnFronting ? const Color(0xFF10B981) : Colors.grey, 
+                        Icons.cloud_sync_rounded,
+                        color: _isPsiphonCdnFronting
+                            ? const Color(0xFF10B981)
+                            : Colors.grey,
                         size: 20,
                       ),
                     ),
@@ -4490,7 +4963,9 @@ class _HomePageState extends State<HomePage> {
                                   style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.bold,
-                                    color: _isPsiphonCdnFronting ? Colors.white : Colors.white70,
+                                    color: _isPsiphonCdnFronting
+                                        ? Colors.white
+                                        : Colors.white70,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -4499,14 +4974,19 @@ class _HomePageState extends State<HomePage> {
                               if (_isPsiphonCdnFronting) ...[
                                 const SizedBox(width: 4),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 1),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withOpacity(0.2),
+                                    color: const Color(0xFF10B981)
+                                        .withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Text(
                                     "FRONTED",
-                                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                                    style: TextStyle(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF10B981)),
                                   ),
                                 ),
                               ],
@@ -4519,7 +4999,9 @@ class _HomePageState extends State<HomePage> {
                                 : "Standard Direct Connection",
                             style: TextStyle(
                               fontSize: 10,
-                              color: _isPsiphonCdnFronting ? const Color(0xFF10B981) : Colors.grey,
+                              color: _isPsiphonCdnFronting
+                                  ? const Color(0xFF10B981)
+                                  : Colors.grey,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -4533,7 +5015,8 @@ class _HomePageState extends State<HomePage> {
                       child: Switch(
                         value: _isPsiphonCdnFronting,
                         activeColor: const Color(0xFF10B981),
-                        activeTrackColor: const Color(0xFF10B981).withOpacity(0.3),
+                        activeTrackColor:
+                            const Color(0xFF10B981).withOpacity(0.3),
                         onChanged: (isConnected || isConnecting)
                             ? null
                             : (val) {
@@ -4541,14 +5024,25 @@ class _HomePageState extends State<HomePage> {
                                   _isPsiphonCdnFronting = val;
                                   if (val) {
                                     // انتخاب خودکار یکی از بهترین کشورهای آماده CDN Fronting
-                                    final cdnSupported = ["DE", "US", "NL", "CA", "GB"];
-                                    if (!cdnSupported.contains(_selectedPsiphonCountry)) {
-                                      _selectedPsiphonCountry = (cdnSupported..shuffle()).first;
+                                    final cdnSupported = [
+                                      "DE",
+                                      "US",
+                                      "NL",
+                                      "CA",
+                                      "GB"
+                                    ];
+                                    if (!cdnSupported
+                                        .contains(_selectedPsiphonCountry)) {
+                                      _selectedPsiphonCountry =
+                                          (cdnSupported..shuffle()).first;
                                     }
                                   }
                                 });
                                 if (val) {
-                                  _showSnackBar(_l("حالت CDN Fronting فعال شد (کشور خودکار: $_selectedPsiphonCountry)", "Режим CDN Fronting активирован (страна: $_selectedPsiphonCountry)", "CDN Fronting mode activated (Country: $_selectedPsiphonCountry)"));
+                                  _showSnackBar(_l(
+                                      "حالت CDN Fronting فعال شد (کشور خودکار: $_selectedPsiphonCountry)",
+                                      "Режим CDN Fronting активирован (страна: $_selectedPsiphonCountry)",
+                                      "CDN Fronting mode activated (Country: $_selectedPsiphonCountry)"));
                                 }
                               },
                       ),
@@ -4561,7 +5055,8 @@ class _HomePageState extends State<HomePage> {
 
               // باکس انتخاب کشور خروجی (Exit Node Country)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(14),
@@ -4569,24 +5064,33 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.public_rounded, size: 20, color: Color(0xFF10B981)),
+                    const Icon(Icons.public_rounded,
+                        size: 20, color: Color(0xFF10B981)),
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
                         "Exit Node Country:",
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white70),
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white70),
                       ),
                     ),
                     DropdownButton<String>(
                       value: _selectedPsiphonCountry,
                       dropdownColor: const Color(0xFF101726),
                       underline: const SizedBox.shrink(),
-                      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF10B981)),
-                      style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 13),
+                      icon: const Icon(Icons.arrow_drop_down,
+                          color: Color(0xFF10B981)),
+                      style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13),
                       onChanged: (isConnected || isConnecting)
                           ? null
                           : (val) {
-                              if (val != null) setState(() => _selectedPsiphonCountry = val);
+                              if (val != null)
+                                setState(() => _selectedPsiphonCountry = val);
                             },
                       items: _psiphonCountries.map((c) {
                         return DropdownMenuItem<String>(
@@ -4634,7 +5138,8 @@ class _HomePageState extends State<HomePage> {
                                 spreadRadius: 6,
                               ),
                               BoxShadow(
-                                color: const Color(0xFF10B981).withOpacity(0.15),
+                                color:
+                                    const Color(0xFF10B981).withOpacity(0.15),
                                 blurRadius: 60,
                                 spreadRadius: 15,
                               ),
@@ -4655,7 +5160,8 @@ class _HomePageState extends State<HomePage> {
                                 width: 50,
                                 height: 50,
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFFF59E0B)),
                                   strokeWidth: 4,
                                 ),
                               )
@@ -4694,7 +5200,10 @@ class _HomePageState extends State<HomePage> {
                       isConnected
                           ? "Connected to Psiphon over MASQUE"
                           : "Tap to connect (Psiphon)",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -4714,7 +5223,8 @@ class _HomePageState extends State<HomePage> {
 
               // نوار وضعیت تحتانی
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(14),
@@ -4725,24 +5235,33 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.shield_rounded, size: 16, color: Color(0xFF10B981)),
+                        Icon(Icons.shield_rounded,
+                            size: 16, color: Color(0xFF10B981)),
                         SizedBox(width: 8),
                         Text(
                           "Psiphon Protocol Protection",
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white70),
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white70),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: const Color(0xFF10B981).withOpacity(0.15),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                        border: Border.all(
+                            color: const Color(0xFF10B981).withOpacity(0.3)),
                       ),
                       child: Text(
                         "Region: $_selectedPsiphonCountry",
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                        style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF10B981)),
                       ),
                     ),
                   ],
@@ -4761,8 +5280,10 @@ class _HomePageState extends State<HomePage> {
     return ValueListenableBuilder<V2RayStatus>(
       valueListenable: v2rayStatus,
       builder: (context, value, child) {
-        final isConnected = _activeEngine == ActiveEngine.tor && value.state == "CONNECTED";
-        final isConnecting = _isTransitioning && _activeEngine != ActiveEngine.tor;
+        final isConnected =
+            _activeEngine == ActiveEngine.tor && value.state == "CONNECTED";
+        final isConnecting =
+            _isTransitioning && _activeEngine != ActiveEngine.tor;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
@@ -4776,17 +5297,20 @@ class _HomePageState extends State<HomePage> {
                   color: const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isConnected 
-                        ? const Color(0xFFC084FC) 
-                        : isConnecting 
-                            ? const Color(0xFFF59E0B) 
+                    color: isConnected
+                        ? const Color(0xFFC084FC)
+                        : isConnecting
+                            ? const Color(0xFFF59E0B)
                             : Colors.white12,
                     width: 1.2,
                   ),
                   boxShadow: [
                     if (isConnected || isConnecting)
                       BoxShadow(
-                        color: (isConnected ? const Color(0xFFC084FC) : const Color(0xFFF59E0B)).withOpacity(0.12),
+                        color: (isConnected
+                                ? const Color(0xFFC084FC)
+                                : const Color(0xFFF59E0B))
+                            .withOpacity(0.12),
                         blurRadius: 16,
                       )
                   ],
@@ -4799,28 +5323,39 @@ class _HomePageState extends State<HomePage> {
                         Row(
                           children: [
                             Icon(
-                              Icons.hub_rounded, 
-                              size: 16, 
-                              color: isConnected ? const Color(0xFFC084FC) : const Color(0xFFF59E0B),
+                              Icons.hub_rounded,
+                              size: 16,
+                              color: isConnected
+                                  ? const Color(0xFFC084FC)
+                                  : const Color(0xFFF59E0B),
                             ),
                             const SizedBox(width: 8),
                             const Text(
                               "Tor Circuit Pipeline",
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white),
                             ),
                           ],
                         ),
                         if (_torBootstrapProgress > 0)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: const Color(0xFFC084FC).withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.35)),
+                              border: Border.all(
+                                  color: const Color(0xFFC084FC)
+                                      .withOpacity(0.35)),
                             ),
                             child: Text(
                               "$_torBootstrapProgress%",
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFC084FC)),
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFC084FC)),
                             ),
                           ),
                       ],
@@ -4832,7 +5367,8 @@ class _HomePageState extends State<HomePage> {
                         child: LinearProgressIndicator(
                           value: _torBootstrapProgress / 100,
                           backgroundColor: Colors.white10,
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFC084FC)),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFFC084FC)),
                           minHeight: 4,
                         ),
                       ),
@@ -4841,14 +5377,16 @@ class _HomePageState extends State<HomePage> {
                     _buildStepRow(
                       stepNumber: 1,
                       title: _t("tor_layer_aether"),
-                      isDone: isConnected || (isConnecting && _torCurrentStep > 1),
+                      isDone:
+                          isConnected || (isConnecting && _torCurrentStep > 1),
                       isActive: isConnecting && _torCurrentStep == 1,
                     ),
                     const Divider(height: 14, color: Colors.white10),
                     _buildStepRow(
                       stepNumber: 2,
                       title: _t("tor_layer_tor"),
-                      isDone: isConnected || (isConnecting && _torCurrentStep > 2),
+                      isDone:
+                          isConnected || (isConnecting && _torCurrentStep > 2),
                       isActive: isConnecting && _torCurrentStep == 2,
                     ),
                     const Divider(height: 14, color: Colors.white10),
@@ -4892,12 +5430,14 @@ class _HomePageState extends State<HomePage> {
                           boxShadow: [
                             if (isConnected) ...[
                               BoxShadow(
-                                color: const Color(0xFFC084FC).withOpacity(0.45),
+                                color:
+                                    const Color(0xFFC084FC).withOpacity(0.45),
                                 blurRadius: 35,
                                 spreadRadius: 6,
                               ),
                               BoxShadow(
-                                color: const Color(0xFFC084FC).withOpacity(0.18),
+                                color:
+                                    const Color(0xFFC084FC).withOpacity(0.18),
                                 blurRadius: 60,
                                 spreadRadius: 15,
                               ),
@@ -4921,22 +5461,32 @@ class _HomePageState extends State<HomePage> {
                                     width: 50,
                                     height: 50,
                                     child: CircularProgressIndicator(
-                                      value: _torBootstrapProgress > 0 ? _torBootstrapProgress / 100 : null,
-                                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+                                      value: _torBootstrapProgress > 0
+                                          ? _torBootstrapProgress / 100
+                                          : null,
+                                      valueColor:
+                                          const AlwaysStoppedAnimation<Color>(
+                                              Color(0xFFF59E0B)),
                                       strokeWidth: 4,
                                     ),
                                   ),
                                   if (_torBootstrapProgress > 0)
                                     Text(
                                       "$_torBootstrapProgress%",
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amberAccent),
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.amberAccent),
                                     )
                                 ],
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 _t("connecting"),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF59E0B)),
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFF59E0B)),
                               ),
                             ] else ...[
                               Icon(
@@ -4967,8 +5517,13 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      isConnected ? "Connected to Onion Circuits" : "Tap to connect (Tor Onion Network)",
-                      style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                      isConnected
+                          ? "Connected to Onion Circuits"
+                          : "Tap to connect (Tor Onion Network)",
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -4979,19 +5534,24 @@ class _HomePageState extends State<HomePage> {
               // وضعیت استپ در کپسول نئونی
               Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF101726),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isConnected ? const Color(0xFFC084FC).withOpacity(0.4) : Colors.white10,
+                      color: isConnected
+                          ? const Color(0xFFC084FC).withOpacity(0.4)
+                          : Colors.white10,
                     ),
                   ),
                   child: Text(
                     _torStepStatus,
                     style: TextStyle(
                       fontSize: 11.5,
-                      color: isConnected ? const Color(0xFFC084FC) : Colors.amberAccent,
+                      color: isConnected
+                          ? const Color(0xFFC084FC)
+                          : Colors.amberAccent,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
@@ -5012,11 +5572,15 @@ class _HomePageState extends State<HomePage> {
               // عنوان انتخاب مسیر تور
               Row(
                 children: [
-                  const Icon(Icons.route_rounded, size: 16, color: Color(0xFFC084FC)),
+                  const Icon(Icons.route_rounded,
+                      size: 16, color: Color(0xFFC084FC)),
                   const SizedBox(width: 8),
                   Text(
                     _t("tor_mode_select"),
-                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ],
               ),
@@ -5075,10 +5639,12 @@ class _HomePageState extends State<HomePage> {
                     controller: _customBridgeController,
                     maxLines: 3,
                     enabled: !isConnected && !isConnecting,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    style:
+                        const TextStyle(fontFamily: 'monospace', fontSize: 12),
                     decoration: InputDecoration(
                       hintText: _t("tor_custom_bridge_hint"),
-                      hintStyle: const TextStyle(fontSize: 11, color: Colors.grey),
+                      hintStyle:
+                          const TextStyle(fontSize: 11, color: Colors.grey),
                       filled: true,
                       fillColor: const Color(0xFF101726),
                       border: OutlineInputBorder(
@@ -5087,11 +5653,13 @@ class _HomePageState extends State<HomePage> {
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: const Color(0xFFC084FC).withOpacity(0.4)),
+                        borderSide: BorderSide(
+                            color: const Color(0xFFC084FC).withOpacity(0.4)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFC084FC), width: 1.5),
+                        borderSide: const BorderSide(
+                            color: Color(0xFFC084FC), width: 1.5),
                       ),
                     ),
                   ),
@@ -5116,20 +5684,26 @@ class _HomePageState extends State<HomePage> {
         if (isDone)
           Container(
             padding: const EdgeInsets.all(3),
-            decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+                color: Color(0xFF10B981), shape: BoxShape.circle),
             child: const Icon(Icons.check, color: Colors.black, size: 12),
           )
         else if (isActive)
           const SizedBox(
             width: 18,
             height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2.2, color: Color(0xFFF59E0B)),
+            child: CircularProgressIndicator(
+                strokeWidth: 2.2, color: Color(0xFFF59E0B)),
           )
         else
           CircleAvatar(
             radius: 9,
             backgroundColor: Colors.white12,
-            child: Text("$stepNumber", style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.bold)),
+            child: Text("$stepNumber",
+                style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.bold)),
           ),
         const SizedBox(width: 12),
         Expanded(
@@ -5137,7 +5711,8 @@ class _HomePageState extends State<HomePage> {
             title,
             style: TextStyle(
               fontSize: 12,
-              fontWeight: (isDone || isActive) ? FontWeight.bold : FontWeight.w500,
+              fontWeight:
+                  (isDone || isActive) ? FontWeight.bold : FontWeight.w500,
               color: isDone
                   ? const Color(0xFF10B981)
                   : isActive
@@ -5174,7 +5749,9 @@ class _HomePageState extends State<HomePage> {
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: disabled ? null : () => setState(() => _selectedTorMode = modeKey),
+          onTap: disabled
+              ? null
+              : () => setState(() => _selectedTorMode = modeKey),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
@@ -5183,11 +5760,17 @@ class _HomePageState extends State<HomePage> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: isSelected ? color.withOpacity(0.16) : Colors.white.withOpacity(0.04),
+                    color: isSelected
+                        ? color.withOpacity(0.16)
+                        : Colors.white.withOpacity(0.04),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isSelected ? color.withOpacity(0.4) : Colors.white10),
+                    border: Border.all(
+                        color: isSelected
+                            ? color.withOpacity(0.4)
+                            : Colors.white10),
                   ),
-                  child: Icon(icon, color: isSelected ? color : Colors.grey, size: 22),
+                  child: Icon(icon,
+                      color: isSelected ? color : Colors.grey, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -5201,20 +5784,27 @@ class _HomePageState extends State<HomePage> {
                               title,
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? Colors.white : Colors.white70,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color:
+                                    isSelected ? Colors.white : Colors.white70,
                               ),
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: color.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               badge,
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: color),
                             ),
                           ),
                         ],
@@ -5222,7 +5812,8 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 3),
                       Text(
                         desc,
-                        style: const TextStyle(fontSize: 10.5, color: Colors.grey),
+                        style:
+                            const TextStyle(fontSize: 10.5, color: Colors.grey),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -5234,9 +5825,12 @@ class _HomePageState extends State<HomePage> {
                   value: modeKey,
                   groupValue: _selectedTorMode,
                   activeColor: color,
-                  onChanged: disabled ? null : (val) {
-                    if (val != null) setState(() => _selectedTorMode = val);
-                  },
+                  onChanged: disabled
+                      ? null
+                      : (val) {
+                          if (val != null)
+                            setState(() => _selectedTorMode = val);
+                        },
                 ),
               ],
             ),
@@ -5270,7 +5864,9 @@ class _HomePageState extends State<HomePage> {
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: disabled ? null : () => setState(() => _selectedAetherMode = modeKey),
+          onTap: disabled
+              ? null
+              : () => setState(() => _selectedAetherMode = modeKey),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
@@ -5279,11 +5875,17 @@ class _HomePageState extends State<HomePage> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: isSelected ? color.withOpacity(0.16) : Colors.white.withOpacity(0.04),
+                    color: isSelected
+                        ? color.withOpacity(0.16)
+                        : Colors.white.withOpacity(0.04),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isSelected ? color.withOpacity(0.4) : Colors.white10),
+                    border: Border.all(
+                        color: isSelected
+                            ? color.withOpacity(0.4)
+                            : Colors.white10),
                   ),
-                  child: Icon(icon, color: isSelected ? color : Colors.grey, size: 22),
+                  child: Icon(icon,
+                      color: isSelected ? color : Colors.grey, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -5297,20 +5899,27 @@ class _HomePageState extends State<HomePage> {
                               title,
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected ? Colors.white : Colors.white70,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color:
+                                    isSelected ? Colors.white : Colors.white70,
                               ),
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: color.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               badge,
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: color),
                             ),
                           ),
                         ],
@@ -5318,7 +5927,8 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 3),
                       Text(
                         desc,
-                        style: const TextStyle(fontSize: 10.5, color: Colors.grey),
+                        style:
+                            const TextStyle(fontSize: 10.5, color: Colors.grey),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -5330,9 +5940,12 @@ class _HomePageState extends State<HomePage> {
                   value: modeKey,
                   groupValue: _selectedAetherMode,
                   activeColor: color,
-                  onChanged: disabled ? null : (val) {
-                    if (val != null) setState(() => _selectedAetherMode = val);
-                  },
+                  onChanged: disabled
+                      ? null
+                      : (val) {
+                          if (val != null)
+                            setState(() => _selectedAetherMode = val);
+                        },
                 ),
               ],
             ),
@@ -5362,9 +5975,11 @@ class _HomePageState extends State<HomePage> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF00F2FE).withOpacity(0.12),
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF00F2FE).withOpacity(0.3)),
+                    border: Border.all(
+                        color: const Color(0xFF00F2FE).withOpacity(0.3)),
                   ),
-                  child: const Icon(Icons.arrow_downward_rounded, color: Color(0xFF00F2FE), size: 20),
+                  child: const Icon(Icons.arrow_downward_rounded,
+                      color: Color(0xFF00F2FE), size: 20),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -5373,11 +5988,15 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       const Text(
                         "Download",
-                        style: TextStyle(fontSize: 10.5, color: Colors.grey, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        _formatBytes(isConnected ? value.downloadSpeed : 0, isSpeed: true),
+                        _formatBytes(isConnected ? value.downloadSpeed : 0,
+                            isSpeed: true),
                         style: const TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold,
@@ -5412,9 +6031,11 @@ class _HomePageState extends State<HomePage> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFF59E0B).withOpacity(0.12),
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+                    border: Border.all(
+                        color: const Color(0xFFF59E0B).withOpacity(0.3)),
                   ),
-                  child: const Icon(Icons.arrow_upward_rounded, color: Color(0xFFF59E0B), size: 20),
+                  child: const Icon(Icons.arrow_upward_rounded,
+                      color: Color(0xFFF59E0B), size: 20),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -5423,11 +6044,15 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       const Text(
                         "Upload",
-                        style: TextStyle(fontSize: 10.5, color: Colors.grey, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        _formatBytes(isConnected ? value.uploadSpeed : 0, isSpeed: true),
+                        _formatBytes(isConnected ? value.uploadSpeed : 0,
+                            isSpeed: true),
                         style: const TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold,
@@ -5459,7 +6084,9 @@ class _HomePageState extends State<HomePage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: _bypassIran ? const Color(0xFF10B981) : Colors.grey.withOpacity(0.2),
+                color: _bypassIran
+                    ? const Color(0xFF10B981)
+                    : Colors.grey.withOpacity(0.2),
                 width: 1.2,
               ),
             ),
@@ -5468,12 +6095,13 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: _bypassIran 
-                        ? const Color(0xFF10B981).withOpacity(0.15) 
+                    backgroundColor: _bypassIran
+                        ? const Color(0xFF10B981).withOpacity(0.15)
                         : Colors.grey.withOpacity(0.15),
                     child: Icon(
-                      Icons.alt_route_rounded, 
-                      color: _bypassIran ? const Color(0xFF10B981) : Colors.grey, 
+                      Icons.alt_route_rounded,
+                      color:
+                          _bypassIran ? const Color(0xFF10B981) : Colors.grey,
                       size: 22,
                     ),
                   ),
@@ -5485,7 +6113,7 @@ class _HomePageState extends State<HomePage> {
                         Text(
                           _t("bypass_iran_title"),
                           style: TextStyle(
-                            fontSize: 14, 
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: _bypassIran ? const Color(0xFF10B981) : null,
                           ),
@@ -5493,7 +6121,8 @@ class _HomePageState extends State<HomePage> {
                         const SizedBox(height: 2),
                         Text(
                           _t("bypass_iran_desc"),
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          style:
+                              const TextStyle(fontSize: 11, color: Colors.grey),
                         ),
                       ],
                     ),
@@ -5517,7 +6146,9 @@ class _HomePageState extends State<HomePage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: _webrtcShield ? const Color(0xFF00F2FE) : Colors.grey.withOpacity(0.2),
+                color: _webrtcShield
+                    ? const Color(0xFF00F2FE)
+                    : Colors.grey.withOpacity(0.2),
                 width: 1.2,
               ),
             ),
@@ -5526,12 +6157,13 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: _webrtcShield 
-                        ? const Color(0xFF00F2FE).withOpacity(0.15) 
+                    backgroundColor: _webrtcShield
+                        ? const Color(0xFF00F2FE).withOpacity(0.15)
                         : Colors.grey.withOpacity(0.15),
                     child: Icon(
-                      Icons.shield_rounded, 
-                      color: _webrtcShield ? const Color(0xFF00F2FE) : Colors.grey, 
+                      Icons.shield_rounded,
+                      color:
+                          _webrtcShield ? const Color(0xFF00F2FE) : Colors.grey,
                       size: 22,
                     ),
                   ),
@@ -5541,19 +6173,27 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _l("سپر ضد نشت WebRTC (Anti-Leak)", "Защита от утечки WebRTC (Anti-Leak)", "WebRTC Anti-Leak Shield"),
+                          _l(
+                              "سپر ضد نشت WebRTC (Anti-Leak)",
+                              "Защита от утечки WebRTC (Anti-Leak)",
+                              "WebRTC Anti-Leak Shield"),
                           style: TextStyle(
-                            fontSize: 14, 
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: _webrtcShield ? const Color(0xFF00F2FE) : null,
+                            color:
+                                _webrtcShield ? const Color(0xFF00F2FE) : null,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          widget.currentLang == "fa" 
-                              ? _l("مسدودسازی پورت‌های STUN و ممانعت از لو رفتن لوکیشن ایران در مرورگرها", "Блокировка STUN-портов для предотвращения утечки IP и геолокации в браузерах", "Block STUN ports to prevent location & IP leaks in browser WebRTC")
+                          widget.currentLang == "fa"
+                              ? _l(
+                                  "مسدودسازی پورت‌های STUN و ممانعت از لو رفتن لوکیشن ایران در مرورگرها",
+                                  "Блокировка STUN-портов для предотвращения утечки IP и геолокации в браузерах",
+                                  "Block STUN ports to prevent location & IP leaks in browser WebRTC")
                               : "Blocks STUN/TURN discovery ports to prevent location leaks in browsers",
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          style:
+                              const TextStyle(fontSize: 11, color: Colors.grey),
                         ),
                       ],
                     ),
@@ -5586,8 +6226,10 @@ class _HomePageState extends State<HomePage> {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: const Color(0xFF00F2FE).withOpacity(0.15),
-                      child: const Icon(Icons.system_update_rounded, color: Color(0xFF00F2FE), size: 22),
+                      backgroundColor:
+                          const Color(0xFF00F2FE).withOpacity(0.15),
+                      child: const Icon(Icons.system_update_rounded,
+                          color: Color(0xFF00F2FE), size: 22),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -5595,18 +6237,27 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _l("بررسی نسخه جدید (Check for Updates)", "Проверить обновления", "Check for Updates"),
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                            _l("بررسی نسخه جدید (Check for Updates)",
+                                "Проверить обновления", "Check for Updates"),
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            _l("نسخه فعلی: v1.2.5 (بررسی آنلاین از مخزن گیت‌هاب)", "Текущая версия: v1.2.5 (прямая проверка с GitHub)", "Current: v1.2.5 (Direct GitHub release check)"),
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            _l(
+                                "نسخه فعلی: v1.2.5 (بررسی آنلاین از مخزن گیت‌هاب)",
+                                "Текущая версия: v1.2.5 (прямая проверка с GitHub)",
+                                "Current: v1.2.5 (Direct GitHub release check)"),
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                    const Icon(Icons.arrow_forward_ios_rounded,
+                        size: 16, color: Colors.grey),
                   ],
                 ),
               ),
@@ -5633,9 +6284,14 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 );
-                if (selectedConfig != null && selectedConfig is Map<String, dynamic>) {
-                  _parseAndSaveConfig(selectedConfig['rawLink'] ?? '', updateUI: true);
-                  _showSnackBar(_l("سرور '${selectedConfig['name']}' انتخاب شد.", "Выбран сервер '${selectedConfig['name']}'.", "Server '${selectedConfig['name']}' selected."));
+                if (selectedConfig != null &&
+                    selectedConfig is Map<String, dynamic>) {
+                  _parseAndSaveConfig(selectedConfig['rawLink'] ?? '',
+                      updateUI: true);
+                  _showSnackBar(_l(
+                      "سرور '${selectedConfig['name']}' انتخاب شد.",
+                      "Выбран сервер '${selectedConfig['name']}'.",
+                      "Server '${selectedConfig['name']}' selected."));
                 }
               },
               child: Padding(
@@ -5643,8 +6299,10 @@ class _HomePageState extends State<HomePage> {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: const Color(0xFF10B981).withOpacity(0.15),
-                      child: const Icon(Icons.dns_rounded, color: Color(0xFF10B981), size: 22),
+                      backgroundColor:
+                          const Color(0xFF10B981).withOpacity(0.15),
+                      child: const Icon(Icons.dns_rounded,
+                          color: Color(0xFF10B981), size: 22),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -5652,18 +6310,29 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _l("مدیریت سرورها و سابسکریپشن (Config & Servers)", "Управление серверами и подписками", "Servers & Subscription Management"),
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                            _l(
+                                "مدیریت سرورها و سابسکریپشن (Config & Servers)",
+                                "Управление серверами и подписками",
+                                "Servers & Subscription Management"),
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            _l("افزودن لینک ساب، ویرایش کانفیگ‌ها و تست پینگ سریع", "Добавление подписок, редактирование конфигов и быстрый пиنگ", "Manage subscriptions, edit configs and ultra-fast ping testing"),
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            _l(
+                                "افزودن لینک ساب، ویرایش کانفیگ‌ها و تست پینگ سریع",
+                                "Добавление подписок, редактирование конфигов и быстрый пиنگ",
+                                "Manage subscriptions, edit configs and ultra-fast ping testing"),
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                    const Icon(Icons.arrow_forward_ios_rounded,
+                        size: 16, color: Colors.grey),
                   ],
                 ),
               ),
@@ -5677,7 +6346,9 @@ class _HomePageState extends State<HomePage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: _splitTunnelEnabled ? const Color(0xFF00F2FE) : Colors.grey.withOpacity(0.2),
+                color: _splitTunnelEnabled
+                    ? const Color(0xFF00F2FE)
+                    : Colors.grey.withOpacity(0.2),
                 width: 1.2,
               ),
             ),
@@ -5687,7 +6358,8 @@ class _HomePageState extends State<HomePage> {
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SplitTunnelScreen(currentLang: widget.currentLang),
+                    builder: (context) =>
+                        SplitTunnelScreen(currentLang: widget.currentLang),
                   ),
                 );
                 _loadSplitTunnelSettings();
@@ -5697,12 +6369,14 @@ class _HomePageState extends State<HomePage> {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: _splitTunnelEnabled 
-                          ? const Color(0xFF00F2FE).withOpacity(0.15) 
+                      backgroundColor: _splitTunnelEnabled
+                          ? const Color(0xFF00F2FE).withOpacity(0.15)
                           : Colors.grey.withOpacity(0.15),
                       child: Icon(
-                        Icons.alt_route_rounded, 
-                        color: _splitTunnelEnabled ? const Color(0xFF00F2FE) : Colors.grey, 
+                        Icons.alt_route_rounded,
+                        color: _splitTunnelEnabled
+                            ? const Color(0xFF00F2FE)
+                            : Colors.grey,
                         size: 22,
                       ),
                     ),
@@ -5714,25 +6388,42 @@ class _HomePageState extends State<HomePage> {
                           Row(
                             children: [
                               Text(
-                                _l("تونل انتخابی برنامه‌ها (Split Tunnel)", "Раздельное туنнелирование (Split Tunneling)", "Split Tunneling"),
+                                _l(
+                                    "تونل انتخابی برنامه‌ها (Split Tunnel)",
+                                    "Раздельное туنнелирование (Split Tunneling)",
+                                    "Split Tunneling"),
                                 style: TextStyle(
-                                  fontSize: 14, 
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: _splitTunnelEnabled ? const Color(0xFF00F2FE) : null,
+                                  color: _splitTunnelEnabled
+                                      ? const Color(0xFF00F2FE)
+                                      : null,
                                 ),
                               ),
                               if (_splitTunnelEnabled) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 1.5),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF00F2FE).withOpacity(0.15),
+                                    color: const Color(0xFF00F2FE)
+                                        .withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     _splitTunnelMode == "bypass"
-                                        ? _l("بایپس: ${_splitTunnelSelectedApps.length}", "Исключения: ${_splitTunnelSelectedApps.length}", "Bypass: ${_splitTunnelSelectedApps.length}") : _l("فقط پروکسی: ${_splitTunnelSelectedApps.length}", "Только проکسی: ${_splitTunnelSelectedApps.length}", "Proxy: ${_splitTunnelSelectedApps.length}"),
-                                    style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE)),
+                                        ? _l(
+                                            "بایپس: ${_splitTunnelSelectedApps.length}",
+                                            "Исключения: ${_splitTunnelSelectedApps.length}",
+                                            "Bypass: ${_splitTunnelSelectedApps.length}")
+                                        : _l(
+                                            "فقط پروکسی: ${_splitTunnelSelectedApps.length}",
+                                            "Только проکسی: ${_splitTunnelSelectedApps.length}",
+                                            "Proxy: ${_splitTunnelSelectedApps.length}"),
+                                    style: const TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF00F2FE)),
                                   ),
                                 ),
                               ],
@@ -5742,13 +6433,26 @@ class _HomePageState extends State<HomePage> {
                           Text(
                             _splitTunnelEnabled
                                 ? (_splitTunnelMode == "bypass"
-                                    ? _l("برنامه‌های انتخابی بدون فیلترشکن باز می‌شوند", "Выбранные приложения работают напрямую без VPN", "Selected apps bypass VPN directly") : _l("تنها برنامه‌های انتخابی از فیلترشکن عبور می‌کنند", "Только выбранные приложения идут через VPN", "Only selected apps route through VPN")) : _l("تنظیم عبور مستقیم برنامه‌های بانکی یا پروکسی اختصاصی", "Настройка прямого доступа для банков и выборочных приложений", "Exclude banking apps or proxy only specific apps"),
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                    ? _l(
+                                        "برنامه‌های انتخابی بدون فیلترشکن باز می‌شوند",
+                                        "Выбранные приложения работают напрямую без VPN",
+                                        "Selected apps bypass VPN directly")
+                                    : _l(
+                                        "تنها برنامه‌های انتخابی از فیلترشکن عبور می‌کنند",
+                                        "Только выбранные приложения идут через VPN",
+                                        "Only selected apps route through VPN"))
+                                : _l(
+                                    "تنظیم عبور مستقیم برنامه‌های بانکی یا پروکسی اختصاصی",
+                                    "Настройка прямого доступа для банков и выборочных приложений",
+                                    "Exclude banking apps or proxy only specific apps"),
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey),
+                    const Icon(Icons.arrow_forward_ios_rounded,
+                        size: 16, color: Colors.grey),
                   ],
                 ),
               ),
@@ -5771,7 +6475,8 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       const CircleAvatar(
                         backgroundColor: Color(0xFF3B82F6),
-                        child: Icon(Icons.terminal_rounded, color: Colors.white, size: 22),
+                        child: Icon(Icons.terminal_rounded,
+                            color: Colors.white, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -5780,12 +6485,14 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Text(
                               _t("logs_title"),
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               _t("logs_subtitle"),
-                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.grey),
                             ),
                           ],
                         ),
@@ -5811,13 +6518,15 @@ class _HomePageState extends State<HomePage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF3B82F6),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
                       icon: const Icon(Icons.receipt_long_rounded, size: 18),
                       label: Text(
                         _t("logs_view_btn"),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ),
                   )
@@ -5829,7 +6538,8 @@ class _HomePageState extends State<HomePage> {
 
           Card(
             color: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -5839,7 +6549,8 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       const CircleAvatar(
                         backgroundColor: Colors.amber,
-                        child: Icon(Icons.battery_charging_full_rounded, color: Colors.black, size: 22),
+                        child: Icon(Icons.battery_charging_full_rounded,
+                            color: Colors.black, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -5848,12 +6559,14 @@ class _HomePageState extends State<HomePage> {
                           children: [
                             Text(
                               _t("battery_opt_title"),
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               _t("battery_opt_desc"),
-                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.grey),
                             ),
                           ],
                         ),
@@ -5866,11 +6579,14 @@ class _HomePageState extends State<HomePage> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         try {
-                          await _aetherChannel.invokeMethod('requestIgnoreBatteryOptimizations');
+                          await _aetherChannel.invokeMethod(
+                              'requestIgnoreBatteryOptimizations');
                         } catch (_) {}
                       },
                       icon: const Icon(Icons.flash_auto_rounded, size: 16),
-                      label: Text(_t("battery_opt_btn"), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                      label: Text(_t("battery_opt_btn"),
+                          style: const TextStyle(
+                              fontSize: 11.5, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -5890,7 +6606,8 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Text(
                         _t("lang_setting"),
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       DropdownButton<String>(
                         value: widget.currentLang,
@@ -5901,9 +6618,12 @@ class _HomePageState extends State<HomePage> {
                           }
                         },
                         items: const [
-                          DropdownMenuItem(value: "ru", child: Text("Русский 🇷🇺")),
-                          DropdownMenuItem(value: "fa", child: Text("فارسی 🇮🇷")),
-                          DropdownMenuItem(value: "en", child: Text("English 🇬🇧")),
+                          DropdownMenuItem(
+                              value: "ru", child: Text("Русский 🇷🇺")),
+                          DropdownMenuItem(
+                              value: "fa", child: Text("فارسی 🇮🇷")),
+                          DropdownMenuItem(
+                              value: "en", child: Text("English 🇬🇧")),
                         ],
                       ),
                     ],
@@ -5914,7 +6634,8 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Text(
                         _t("theme_setting"),
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       Switch(
                         value: widget.isDarkMode,
@@ -5927,10 +6648,15 @@ class _HomePageState extends State<HomePage> {
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Align(
-                      alignment: widget.currentLang == "fa" ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: widget.currentLang == "fa"
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: Text(
-                        widget.isDarkMode ? _t("theme_dark") : _t("theme_light"),
-                        style: const TextStyle(color: Colors.grey, fontSize: 13),
+                        widget.isDarkMode
+                            ? _t("theme_dark")
+                            : _t("theme_light"),
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     ),
                   ),
@@ -5943,7 +6669,8 @@ class _HomePageState extends State<HomePage> {
           // بخش ارتباط، کانال تلگرام و حمایت مالی
           Card(
             color: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -5951,7 +6678,8 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Text(
                     _t("contact_title"),
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -5962,10 +6690,14 @@ class _HomePageState extends State<HomePage> {
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Color(0xFF229ED9)),
                             padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                           ),
-                          icon: const Icon(Icons.send_rounded, size: 16, color: Color(0xFF229ED9)),
-                          label: Text(_t("contact_telegram"), style: const TextStyle(fontSize: 11, color: Color(0xFF229ED9))),
+                          icon: const Icon(Icons.send_rounded,
+                              size: 16, color: Color(0xFF229ED9)),
+                          label: Text(_t("contact_telegram"),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Color(0xFF229ED9))),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -5976,10 +6708,13 @@ class _HomePageState extends State<HomePage> {
                             backgroundColor: Colors.amber.shade700,
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                           ),
                           icon: const Icon(Icons.favorite_rounded, size: 16),
-                          label: Text(_t("contact_donate"), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: Text(_t("contact_donate"),
+                              style: const TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -5993,7 +6728,8 @@ class _HomePageState extends State<HomePage> {
           // بخش بیانیه حریم خصوصی
           Card(
             color: Theme.of(context).colorScheme.surface,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -6001,18 +6737,22 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.shield_outlined, color: Theme.of(context).colorScheme.secondary, size: 20),
+                      Icon(Icons.shield_outlined,
+                          color: Theme.of(context).colorScheme.secondary,
+                          size: 20),
                       const SizedBox(width: 8),
                       Text(
                         _t("privacy_title"),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _t("privacy_text"),
-                    style: const TextStyle(fontSize: 12, height: 1.5, color: Colors.white60),
+                    style: const TextStyle(
+                        fontSize: 12, height: 1.5, color: Colors.white60),
                   ),
                 ],
               ),
@@ -6036,18 +6776,21 @@ class _HomePageState extends State<HomePage> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.shield_outlined, color: Theme.of(context).colorScheme.secondary, size: 28),
+                  Icon(Icons.shield_outlined,
+                      color: Theme.of(context).colorScheme.secondary, size: 28),
                   const SizedBox(width: 10),
                   Text(
                     _t("privacy_title"),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
               const SizedBox(height: 15),
               Text(
                 _t("privacy_text"),
-                style: const TextStyle(fontSize: 14, height: 1.6, color: Colors.white70),
+                style: const TextStyle(
+                    fontSize: 14, height: 1.6, color: Colors.white70),
                 textAlign: TextAlign.start,
               ),
             ],
@@ -6065,7 +6808,8 @@ class _HomePageState extends State<HomePage> {
         children: [
           Text(
             _t("contact_title"),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
+            style: const TextStyle(
+                fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 25),
@@ -6096,7 +6840,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildActionGridCard(String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionGridCard(
+      String title, IconData icon, Color color, VoidCallback onTap) {
     return Card(
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
@@ -6119,7 +6864,8 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 14),
               Text(
                 title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -6128,8 +6874,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-  
 }
 
 class LogsScreen extends StatefulWidget {
@@ -6179,7 +6923,8 @@ class _LogsScreenState extends State<LogsScreen> {
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_l("گزارشات پاک‌سازی شدند.", "Логи успешно очищены.", "Logs cleared.")),
+        content: Text(_l("گزارشات پاک‌سازی شدند.", "Логи успешно очищены.",
+            "Logs cleared.")),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -6227,7 +6972,8 @@ class _LogsScreenState extends State<LogsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            _l("گزارشات و لاگ‌های سیستم", "Системные логи и диагностика", "System Logs & Diagnostics"),
+            _l("گزارشات و لاگ‌های سیستم", "Системные логи и диагностика",
+                "System Logs & Diagnostics"),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           actions: [
@@ -6240,7 +6986,10 @@ class _LogsScreenState extends State<LogsScreen> {
                   Clipboard.setData(ClipboardData(text: text));
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(_l("تمامی لاگ‌ها کپی شدند!", "Все логи скопированы в буфер обмена!", "All logs copied to clipboard!")),
+                      content: Text(_l(
+                          "تمامی لاگ‌ها کپی شدند!",
+                          "Все логи скопированы в буфер обмена!",
+                          "All logs copied to clipboard!")),
                       duration: const Duration(seconds: 2),
                     ),
                   );
@@ -6257,7 +7006,8 @@ class _LogsScreenState extends State<LogsScreen> {
         body: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: TextField(
                 controller: _searchController,
                 onChanged: (val) {
@@ -6266,7 +7016,8 @@ class _LogsScreenState extends State<LogsScreen> {
                   });
                 },
                 decoration: InputDecoration(
-                  hintText: _l("جستجو در متن لاگ‌ها...", "Поиск در логах...", "Filter logs..."),
+                  hintText: _l("جستجو در متن لاگ‌ها...", "Поиск در логах...",
+                      "Filter logs..."),
                   hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
                   prefixIcon: const Icon(Icons.search, size: 20),
                   suffixIcon: _searchQuery.isNotEmpty
@@ -6282,7 +7033,8 @@ class _LogsScreenState extends State<LogsScreen> {
                       : null,
                   filled: true,
                   fillColor: const Color(0xFF1E293B),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -6297,13 +7049,18 @@ class _LogsScreenState extends State<LogsScreen> {
                   final logs = AppLogger.currentLogs;
                   final filteredLogs = _searchQuery.isEmpty
                       ? logs
-                      : logs.where((e) => e.format().toLowerCase().contains(_searchQuery)).toList();
+                      : logs
+                          .where((e) =>
+                              e.format().toLowerCase().contains(_searchQuery))
+                          .toList();
 
                   if (filteredLogs.isEmpty) {
                     return Center(
                       child: Text(
-                        _l("هنوز هیچ لاگی ثبت نشده است.", "Логи пока отсутствуют.", "No logs available."),
-                        style: const TextStyle(color: Colors.grey, fontSize: 13),
+                        _l("هنوز هیچ لاگی ثبت نشده است.",
+                            "Логи пока отсутствуют.", "No logs available."),
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 13),
                       ),
                     );
                   }
@@ -6329,8 +7086,12 @@ class _LogsScreenState extends State<LogsScreen> {
                             TextSpan(
                               children: [
                                 TextSpan(
-                                  text: "[${entry.time.hour.toString().padLeft(2, '0')}:${entry.time.minute.toString().padLeft(2, '0')}:${entry.time.second.toString().padLeft(2, '0')}.${entry.time.millisecond.toString().padLeft(3, '0')}] ",
-                                  style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'monospace'),
+                                  text:
+                                      "[${entry.time.hour.toString().padLeft(2, '0')}:${entry.time.minute.toString().padLeft(2, '0')}:${entry.time.second.toString().padLeft(2, '0')}.${entry.time.millisecond.toString().padLeft(3, '0')}] ",
+                                  style: const TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 11,
+                                      fontFamily: 'monospace'),
                                 ),
                                 TextSpan(
                                   text: "[${entry.tag}] ",
@@ -6344,7 +7105,9 @@ class _LogsScreenState extends State<LogsScreen> {
                                 TextSpan(
                                   text: entry.message,
                                   style: TextStyle(
-                                    color: entry.isError ? Colors.redAccent : Colors.white70,
+                                    color: entry.isError
+                                        ? Colors.redAccent
+                                        : Colors.white70,
                                     fontSize: 11.5,
                                     fontFamily: 'monospace',
                                   ),
@@ -6379,6 +7142,14 @@ class LanShareScreen extends StatefulWidget {
   final String currentLang;
   const LanShareScreen({super.key, required this.currentLang});
 
+  static String generateSecureRandomPassword([int length = 10]) {
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rnd = Random.secure();
+    return List.generate(length, (_) => chars[rnd.nextInt(chars.length)])
+        .join();
+  }
+
   @override
   State<LanShareScreen> createState() => _LanShareScreenState();
 }
@@ -6390,10 +7161,13 @@ class _LanShareScreenState extends State<LanShareScreen> {
     return en;
   }
 
-  static const MethodChannel _lanChannel = MethodChannel('com.redcloud.vpn/lan_channel');
+  static const MethodChannel _lanChannel =
+      MethodChannel('com.redcloud.vpn/lan_channel');
 
-  final TextEditingController _ssidController = TextEditingController(text: "RedCloud");
-  final TextEditingController _passwordController = TextEditingController(text: "12345678");
+  final TextEditingController _ssidController =
+      TextEditingController(text: "RedCloud");
+  final TextEditingController _passwordController = TextEditingController(
+      text: LanShareScreen.generateSecureRandomPassword(10));
 
   bool _isSharingActive = true;
   bool _isHotspotMode = false;
@@ -6484,7 +7258,10 @@ class _LanShareScreenState extends State<LanShareScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            _l("اشتراک شبکه محلی (LAN Share)", "Общий доступ по локальной сети (LAN Share)", "LAN Share & Hotspot"),
+            _l(
+                "اشتراک شبکه محلی (LAN Share)",
+                "Общий доступ по локальной сети (LAN Share)",
+                "LAN Share & Hotspot"),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           centerTitle: true,
@@ -6507,9 +7284,13 @@ class _LanShareScreenState extends State<LanShareScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF101726),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF00F2FE).withOpacity(0.35), width: 1.3),
+                  border: Border.all(
+                      color: const Color(0xFF00F2FE).withOpacity(0.35),
+                      width: 1.3),
                   boxShadow: [
-                    BoxShadow(color: const Color(0xFF00F2FE).withOpacity(0.1), blurRadius: 20)
+                    BoxShadow(
+                        color: const Color(0xFF00F2FE).withOpacity(0.1),
+                        blurRadius: 20)
                   ],
                 ),
                 child: Column(
@@ -6530,14 +7311,27 @@ class _LanShareScreenState extends State<LanShareScreen> {
                     const SizedBox(height: 12),
                     Text(
                       _isHotspotMode
-                          ? _l("هات‌اسپات فعال است! با دوربین گوشی بارکد را اسکن کنید.", "Wi-Fi Hotspot активен! Отсканируйте QR-код для подключения.", "Wi-Fi Hotspot Active! Scan with camera to connect.") : _l("پروکسی فعال است! بارکد را برای اتصال تلگرام اسکن کنید.", "Локальный прокси активен! Отсканируйте QR-код для настройки Telegram.", "Proxy Active! Scan QR code to connect Telegram."),
-                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE)),
+                          ? _l(
+                              "هات‌اسپات فعال است! با دوربین گوشی بارکد را اسکن کنید.",
+                              "Wi-Fi Hotspot активен! Отсканируйте QR-код для подключения.",
+                              "Wi-Fi Hotspot Active! Scan with camera to connect.")
+                          : _l(
+                              "پروکسی فعال است! بارکد را برای اتصال تلگرام اسکن کنید.",
+                              "Локальный прокси активен! Отсканируйте QR-код для настройки Telegram.",
+                              "Proxy Active! Scan QR code to connect Telegram."),
+                      style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF00F2FE)),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       "Local Network Address: $_localIp:$_socksPort",
-                      style: const TextStyle(fontSize: 10.5, color: Colors.grey, fontFamily: 'monospace'),
+                      style: const TextStyle(
+                          fontSize: 10.5,
+                          color: Colors.grey,
+                          fontFamily: 'monospace'),
                     ),
                   ],
                 ),
@@ -6558,17 +7352,25 @@ class _LanShareScreenState extends State<LanShareScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.router_rounded, color: Color(0xFF00F2FE), size: 18),
+                        const Icon(Icons.router_rounded,
+                            color: Color(0xFF00F2FE), size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          _l("مشخصات پروکسی محلی (Local Proxy)", "Параметры локального прокси (Local Proxy)", "Local Proxy Connection Details"),
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                          _l(
+                              "مشخصات پروکسی محلی (Local Proxy)",
+                              "Параметры локального прокси (Local Proxy)",
+                              "Local Proxy Connection Details"),
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: const Color(0xFF090D16),
                         borderRadius: BorderRadius.circular(10),
@@ -6579,15 +7381,35 @@ class _LanShareScreenState extends State<LanShareScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(_l("آی‌پی سیستم (Proxy Host):", "IP-адрес (Proxy Host):", "Proxy Host (Local IP):"), style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
-                              Text(_localIp, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'monospace')),
+                              Text(
+                                  _l(
+                                      "آی‌پی سیستم (Proxy Host):",
+                                      "IP-адрес (Proxy Host):",
+                                      "Proxy Host (Local IP):"),
+                                  style: const TextStyle(
+                                      fontSize: 10.5, color: Colors.grey)),
+                              Text(_localIp,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      fontFamily: 'monospace')),
                             ],
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text(_l("پورت‌ها (SOCKS / HTTP):", "Порты (SOCKS / HTTP):", "LAN Ports:"), style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
-                              Text("$_socksPort / $_httpPort", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE), fontFamily: 'monospace')),
+                              Text(
+                                  _l("پورت‌ها (SOCKS / HTTP):",
+                                      "Порты (SOCKS / HTTP):", "LAN Ports:"),
+                                  style: const TextStyle(
+                                      fontSize: 10.5, color: Colors.grey)),
+                              Text("$_socksPort / $_httpPort",
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF00F2FE),
+                                      fontFamily: 'monospace')),
                             ],
                           ),
                         ],
@@ -6598,30 +7420,51 @@ class _LanShareScreenState extends State<LanShareScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _copyToClipboard("$_localIp:$_socksPort", _l("آدرس IP:Port کپی شد!", "Адрес IP:Port скопирован!", "IP:Port Copied!")),
+                            onPressed: () => _copyToClipboard(
+                                "$_localIp:$_socksPort",
+                                _l(
+                                    "آدرس IP:Port کپی شد!",
+                                    "Адрес IP:Port скопирован!",
+                                    "IP:Port Copied!")),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1E293B),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
                             icon: const Icon(Icons.copy_rounded, size: 15),
-                            label: Text(_l("کپی IP:Port", "Скопировать IP:Port", "Copy IP:Port"), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: Text(
+                                _l("کپی IP:Port", "Скопировать IP:Port",
+                                    "Copy IP:Port"),
+                                style: const TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () => _copyToClipboard("https://t.me/socks?server=$_localIp&port=$_socksPort", _l("لینک پروکسی تلگرام کپی شد!", "Ссылка на прокси Telegram скопирована!", "Telegram Proxy Link Copied!")),
+                            onPressed: () => _copyToClipboard(
+                                "https://t.me/socks?server=$_localIp&port=$_socksPort",
+                                _l(
+                                    "لینک پروکسی تلگرام کپی شد!",
+                                    "Ссылка на прокси Telegram скопирована!",
+                                    "Telegram Proxy Link Copied!")),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00F2FE).withOpacity(0.2),
+                              backgroundColor:
+                                  const Color(0xFF00F2FE).withOpacity(0.2),
                               foregroundColor: const Color(0xFF00F2FE),
                               side: const BorderSide(color: Color(0xFF00F2FE)),
                               padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
                             icon: const Icon(Icons.send_rounded, size: 15),
-                            label: Text(_l("پروکسی تلگرام", "Прокси Telegram", "Telegram Proxy"), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: Text(
+                                _l("پروکسی تلگرام", "Прокси Telegram",
+                                    "Telegram Proxy"),
+                                style: const TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -6640,188 +7483,267 @@ class _LanShareScreenState extends State<LanShareScreen> {
                     color: const Color(0xFF101726),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: _isHotspotMode ? const Color(0xFF10B981) : Colors.white12,
+                      color: _isHotspotMode
+                          ? const Color(0xFF10B981)
+                          : Colors.white12,
                       width: _isHotspotMode ? 1.4 : 1.0,
                     ),
                   ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.wifi_tethering_rounded, color: _isHotspotMode ? const Color(0xFF10B981) : Colors.grey, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              _l("روتر مجازی (Virtual Hotspot)", "Виртуальный роутер (Virtual Hotspot)", "Virtual Wi-Fi Hotspot"),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: _isHotspotMode ? Colors.white : Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Transform.scale(
-                          scale: 0.8,
-                          child: Switch(
-                            value: _isHotspotMode,
-                            activeColor: const Color(0xFF10B981),
-                            onChanged: (val) => setState(() => _isHotspotMode = val),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _l("اشتراک بدون فیلتر اینترنت از طریق وای‌فای گوشی", "Раздача интернета без блокировок через Wi-Fi", "Share uncensored internet via phone Wi-Fi"),
-                      style: const TextStyle(fontSize: 10.5, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _ssidController,
-                            style: const TextStyle(fontSize: 12, color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: _l("نام هات‌اسپات (SSID)", "Имя сети (SSID)", "Hotspot Name (SSID)"),
-                              labelStyle: const TextStyle(fontSize: 11, color: Colors.grey),
-                              prefixIcon: const Icon(Icons.wifi, size: 16, color: Color(0xFF10B981)),
-                              filled: true,
-                              fillColor: const Color(0xFF090D16),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: _passwordController,
-                            obscureText: !_showPassword,
-                            style: const TextStyle(fontSize: 12, color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: _l("رمز عبور", "Пароль", "Password"),
-                              labelStyle: const TextStyle(fontSize: 11, color: Colors.grey),
-                              prefixIcon: const Icon(Icons.lock_rounded, size: 16, color: Color(0xFF10B981)),
-                              suffixIcon: IconButton(
-                                icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility, size: 16, color: Colors.grey),
-                                onPressed: () => setState(() => _showPassword = !_showPassword),
-                              ),
-                              filled: true,
-                              fillColor: const Color(0xFF090D16),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    // نوار دکمه و مانیتور دستگاه‌های متصل
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.35)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.devices_rounded, size: 15, color: Color(0xFF10B981)),
-                              const SizedBox(width: 6),
-                              Text(
-                                "Clients (${_connectedClients.length})",
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () => _lanChannel.invokeMethod('openHotspotSettings'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF10B981),
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.settings_remote_rounded, size: 16),
-                          label: Text(_l("تنظیمات هات‌اسپات", "Настройки Hotspot", "Hotspot Settings"), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-
-                    // روتینگ شفاف iptables برای دستگاه‌های روت‌شده
-                    if (_isRooted) ...[
-                      const Divider(height: 20, color: Colors.white10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.flash_on_rounded, size: 16, color: Colors.amberAccent),
-                              const SizedBox(width: 6),
+                              Icon(Icons.wifi_tethering_rounded,
+                                  color: _isHotspotMode
+                                      ? const Color(0xFF10B981)
+                                      : Colors.grey,
+                                  size: 20),
+                              const SizedBox(width: 8),
                               Text(
-                                _l("هدایت خودکار ترافیک (Transparent Routing)", "Прозрачная маршрутизация (Root)", "Transparent Tethering (Root)"),
-                                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white),
+                                _l(
+                                    "روتر مجازی (Virtual Hotspot)",
+                                    "Виртуальный роутер (Virtual Hotspot)",
+                                    "Virtual Wi-Fi Hotspot"),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: _isHotspotMode
+                                      ? Colors.white
+                                      : Colors.white70,
+                                ),
                               ),
                             ],
                           ),
-                          Switch(
-                            value: _transparentRouting,
-                            activeColor: Colors.amberAccent,
-                            onChanged: (val) async {
-                              setState(() => _transparentRouting = val);
-                              await _lanChannel.invokeMethod('enableTransparentRouting', {'enable': val});
-                            },
+                          Transform.scale(
+                            scale: 0.8,
+                            child: Switch(
+                              value: _isHotspotMode,
+                              activeColor: const Color(0xFF10B981),
+                              onChanged: (val) =>
+                                  setState(() => _isHotspotMode = val),
+                            ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 4),
                       Text(
-                        _l("عبور مستقیم تمام دستگاه‌های متصل بدون نیاز به تنظیم پروکسی", "Автоматически направлять трафик всех подключенных устройств в VPN без настройки прокси", "Forces all tethered traffic into VPN tunnel without client proxy configuration"),
-                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                        _l(
+                            "اشتراک بدون فیلتر اینترنت از طریق وای‌فای گوشی",
+                            "Раздача интернета без блокировок через Wi-Fi",
+                            "Share uncensored internet via phone Wi-Fi"),
+                        style:
+                            const TextStyle(fontSize: 10.5, color: Colors.grey),
                       ),
-                    ],
-
-                    // لیست زنده دستگاه‌های متصل
-                    if (_connectedClients.isNotEmpty) ...[
-                      const Divider(height: 20, color: Colors.white10),
-                      Text(_l("دستگاه‌های متصل:", "Подключенные устройства:", "Connected Devices:"), style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.white70)),
-                      const SizedBox(height: 8),
-                      ..._connectedClients.map((client) {
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF090D16),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.phone_android_rounded, size: 16, color: Color(0xFF00F2FE)),
-                                  const SizedBox(width: 8),
-                                  Text(client["name"] ?? "Client", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                                ],
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _ssidController,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: _l("نام هات‌اسپات (SSID)",
+                                    "Имя сети (SSID)", "Hotspot Name (SSID)"),
+                                labelStyle: const TextStyle(
+                                    fontSize: 11, color: Colors.grey),
+                                prefixIcon: const Icon(Icons.wifi,
+                                    size: 16, color: Color(0xFF10B981)),
+                                filled: true,
+                                fillColor: const Color(0xFF090D16),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide.none),
                               ),
-                              Text(client["ip"] ?? "", style: const TextStyle(fontSize: 11, color: Color(0xFF10B981), fontFamily: 'monospace')),
-                            ],
+                            ),
                           ),
-                        );
-                      }),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: _passwordController,
+                              obscureText: !_showPassword,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: _l("رمز عبور", "Пароль", "Password"),
+                                labelStyle: const TextStyle(
+                                    fontSize: 11, color: Colors.grey),
+                                prefixIcon: const Icon(Icons.lock_rounded,
+                                    size: 16, color: Color(0xFF10B981)),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                      _showPassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      size: 16,
+                                      color: Colors.grey),
+                                  onPressed: () => setState(
+                                      () => _showPassword = !_showPassword),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFF090D16),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide.none),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // نوار دکمه و مانیتور دستگاه‌های متصل
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: const Color(0xFF10B981)
+                                      .withOpacity(0.35)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.devices_rounded,
+                                    size: 15, color: Color(0xFF10B981)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "Clients (${_connectedClients.length})",
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF10B981)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () =>
+                                _lanChannel.invokeMethod('openHotspotSettings'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.settings_remote_rounded,
+                                size: 16),
+                            label: Text(
+                                _l("تنظیمات هات‌اسپات", "Настройки Hotspot",
+                                    "Hotspot Settings"),
+                                style: const TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+
+                      // روتینگ شفاف iptables برای دستگاه‌های روت‌شده
+                      if (_isRooted) ...[
+                        const Divider(height: 20, color: Colors.white10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.flash_on_rounded,
+                                    size: 16, color: Colors.amberAccent),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _l(
+                                      "هدایت خودکار ترافیک (Transparent Routing)",
+                                      "Прозрачная маршрутизация (Root)",
+                                      "Transparent Tethering (Root)"),
+                                  style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white),
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: _transparentRouting,
+                              activeColor: Colors.amberAccent,
+                              onChanged: (val) async {
+                                setState(() => _transparentRouting = val);
+                                await _lanChannel.invokeMethod(
+                                    'enableTransparentRouting',
+                                    {'enable': val});
+                              },
+                            ),
+                          ],
+                        ),
+                        Text(
+                          _l(
+                              "عبور مستقیم تمام دستگاه‌های متصل بدون نیاز به تنظیم پروکسی",
+                              "Автоматически направлять трафик всех подключенных устройств в VPN без настройки прокси",
+                              "Forces all tethered traffic into VPN tunnel without client proxy configuration"),
+                          style:
+                              const TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                      ],
+
+                      // لیست زنده دستگاه‌های متصل
+                      if (_connectedClients.isNotEmpty) ...[
+                        const Divider(height: 20, color: Colors.white10),
+                        Text(
+                            _l("دستگاه‌های متصل:", "Подключенные устройства:",
+                                "Connected Devices:"),
+                            style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white70)),
+                        const SizedBox(height: 8),
+                        ..._connectedClients.map((client) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF090D16),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.phone_android_rounded,
+                                        size: 16, color: Color(0xFF00F2FE)),
+                                    const SizedBox(width: 8),
+                                    Text(client["name"] ?? "Client",
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white)),
+                                  ],
+                                ),
+                                Text(client["ip"] ?? "",
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Color(0xFF10B981),
+                                        fontFamily: 'monospace')),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
               ],
 
               const SizedBox(height: 16),
@@ -6829,48 +7751,81 @@ class _LanShareScreenState extends State<LanShareScreen> {
               // راهنماهای تصویری و سریع برای کلاینت‌ها
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
-                leading: const Icon(Icons.android_rounded, color: Color(0xFF10B981), size: 20),
-                title: Text(_l("راهنمای اتصال گوشی‌های دیگر و تبلت", "Инструкция для Android и планшетов", "Android & Tablet Setup Guide"), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.android_rounded,
+                    color: Color(0xFF10B981), size: 20),
+                title: Text(
+                    _l(
+                        "راهنمای اتصال گوشی‌های دیگر و تبلت",
+                        "Инструкция для Android и планшетов",
+                        "Android & Tablet Setup Guide"),
+                    style: const TextStyle(
+                        fontSize: 12.5, fontWeight: FontWeight.bold)),
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
                       isFa
-                          ? _l("۱. به هات‌اسپات گوشی یا همان وای‌فای مشترک وصل شوید.\n۲. تنظیمات وای‌فای را باز کرده و Proxy را روی Manual بگذارید.\n۳. هاست را $_localIp و پورت را $_httpPort یا $_socksPort وارد کنید.", "1. Подключитесь к Wi-Fi сети телефона.\n2. Откройте настройки Wi-Fi и установиته Proxy на Manual (Вручную).\n3. Введите Host: $_localIp و Port: $_httpPort или $_socksPort.", "1. Connect to phone Wi-Fi hotspot.\n2. Open Wi-Fi settings and set Proxy to Manual.\n3. Set Host to $_localIp and Port to $_httpPort or $_socksPort.")
+                          ? _l(
+                              "۱. به هات‌اسپات گوشی یا همان وای‌فای مشترک وصل شوید.\n۲. تنظیمات وای‌فای را باز کرده و Proxy را روی Manual بگذارید.\n۳. هاست را $_localIp و پورت را $_httpPort یا $_socksPort وارد کنید.",
+                              "1. Подключитесь к Wi-Fi сети телефона.\n2. Откройте настройки Wi-Fi и установиته Proxy на Manual (Вручную).\n3. Введите Host: $_localIp و Port: $_httpPort или $_socksPort.",
+                              "1. Connect to phone Wi-Fi hotspot.\n2. Open Wi-Fi settings and set Proxy to Manual.\n3. Set Host to $_localIp and Port to $_httpPort or $_socksPort.")
                           : "1. Connect to phone hotspot or same Wi-Fi.\n2. In Wi-Fi settings, set Proxy to Manual.\n3. Enter Host: $_localIp and Port: $_httpPort",
-                      style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.5),
+                      style: const TextStyle(
+                          fontSize: 11, color: Colors.white60, height: 1.5),
                     ),
                   ),
                 ],
               ),
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
-                leading: const Icon(Icons.apple_rounded, color: Colors.white, size: 20),
-                title: Text(_l("راهنمای اتصال آیفون و آیپد (iOS)", "Инструкция для iPhone и iPad (iOS)", "iPhone & iPad Guide (iOS)"), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.apple_rounded,
+                    color: Colors.white, size: 20),
+                title: Text(
+                    _l(
+                        "راهنمای اتصال آیفون و آیپد (iOS)",
+                        "Инструкция для iPhone и iPad (iOS)",
+                        "iPhone & iPad Guide (iOS)"),
+                    style: const TextStyle(
+                        fontSize: 12.5, fontWeight: FontWeight.bold)),
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
                       isFa
-                          ? _l("۱. به هات‌اسپات وصل شوید.\n۲. دکمه (i) کنار نام وای‌فای را بزنید و در پایین صفحه Configure Proxy را روی Manual قرار دهید.\n۳. Server: $_localIp و Port: $_httpPort را ذخیره کنید.", "1. Подключитесь к Wi-Fi сети.\n2. Нажмите (i) рядом с именем Wi-Fi и внизу выберите Настройка прокси -> Вручную.\n3. Укажите Сервер: $_localIp و Порт: $_httpPort.", "1. Connect to Wi-Fi.\n2. Tap (i) next to Wi-Fi name, select Configure Proxy -> Manual.\n3. Enter Server: $_localIp and Port: $_httpPort.")
+                          ? _l(
+                              "۱. به هات‌اسپات وصل شوید.\n۲. دکمه (i) کنار نام وای‌فای را بزنید و در پایین صفحه Configure Proxy را روی Manual قرار دهید.\n۳. Server: $_localIp و Port: $_httpPort را ذخیره کنید.",
+                              "1. Подключитесь к Wi-Fi сети.\n2. Нажмите (i) рядом с именем Wi-Fi и внизу выберите Настройка прокси -> Вручную.\n3. Укажите Сервер: $_localIp و Порт: $_httpPort.",
+                              "1. Connect to Wi-Fi.\n2. Tap (i) next to Wi-Fi name, select Configure Proxy -> Manual.\n3. Enter Server: $_localIp and Port: $_httpPort.")
                           : "1. Connect to Wi-Fi, tap (i) icon.\n2. Tap Configure Proxy -> Manual.\n3. Server: $_localIp, Port: $_httpPort.",
-                      style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.5),
+                      style: const TextStyle(
+                          fontSize: 11, color: Colors.white60, height: 1.5),
                     ),
                   ),
                 ],
               ),
               ExpansionTile(
                 tilePadding: EdgeInsets.zero,
-                leading: const Icon(Icons.tv_rounded, color: Color(0xFF00F2FE), size: 20),
-                title: Text(_l("راهنمای تلویزیون هوشمند و کنسول (PS5/Xbox/TV)", "Инструкция для Smart TV и консолей (PS5/Xbox/TV)", "Smart TV & Gaming Console Guide"), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.tv_rounded,
+                    color: Color(0xFF00F2FE), size: 20),
+                title: Text(
+                    _l(
+                        "راهنمای تلویزیون هوشمند و کنسول (PS5/Xbox/TV)",
+                        "Инструкция для Smart TV и консолей (PS5/Xbox/TV)",
+                        "Smart TV & Gaming Console Guide"),
+                    style: const TextStyle(
+                        fontSize: 12.5, fontWeight: FontWeight.bold)),
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
                       isFa
-                          ? _l("در بخش Network Settings کنسول یا تلویزیون، پروکسی را روی Manual گذاشته و آدرس $_localIp:$_httpPort را وارد کنید تا یوتیوب و بازی‌ها بدون فیلتر لود شوند.", "В настройках сети (Network Settings) консоли или ТВ выберите Manual Proxy и укажите $_localIp:$_httpPort.", "In Network Settings of console or TV, set Proxy to Manual and enter $_localIp:$_httpPort.")
+                          ? _l(
+                              "در بخش Network Settings کنسول یا تلویزیون، پروکسی را روی Manual گذاشته و آدرس $_localIp:$_httpPort را وارد کنید تا یوتیوب و بازی‌ها بدون فیلتر لود شوند.",
+                              "В настройках сети (Network Settings) консоли или ТВ выберите Manual Proxy и укажите $_localIp:$_httpPort.",
+                              "In Network Settings of console or TV, set Proxy to Manual and enter $_localIp:$_httpPort.")
                           : "In console/TV network settings, enable proxy with IP: $_localIp and Port: $_httpPort to enjoy free internet.",
-                      style: const TextStyle(fontSize: 11, color: Colors.white60, height: 1.5),
+                      style: const TextStyle(
+                          fontSize: 11, color: Colors.white60, height: 1.5),
                     ),
                   ),
                 ],
@@ -6903,7 +7858,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
     return en;
   }
 
-  static const MethodChannel _lanChannel = MethodChannel('com.redcloud.vpn/lan_channel');
+  static const MethodChannel _lanChannel =
+      MethodChannel('com.redcloud.vpn/lan_channel');
 
   bool _isEnabled = false;
   String _mode = "bypass"; // "bypass" یا "proxy_only"
@@ -6926,7 +7882,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
     final prefs = AppPreferences.instance;
     final bool savedEnabled = prefs.getBool('split_tunnel_enabled') ?? false;
     final String savedMode = prefs.getString('split_tunnel_mode') ?? "bypass";
-    final List<String> savedSelected = prefs.getStringList('split_tunnel_selected_apps') ?? [];
+    final List<String> savedSelected =
+        prefs.getStringList('split_tunnel_selected_apps') ?? [];
 
     setState(() {
       _isEnabled = savedEnabled;
@@ -6968,25 +7925,69 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
     final prefs = AppPreferences.instance;
     await prefs.setBool('split_tunnel_enabled', _isEnabled);
     await prefs.setString('split_tunnel_mode', _mode);
-    await prefs.setStringList('split_tunnel_selected_apps', _selectedPackages.toList());
+    await prefs.setStringList(
+        'split_tunnel_selected_apps', _selectedPackages.toList());
   }
 
   // انتخاب هوشمند تمام برنامه‌های بانکی، پرداخت، اسنپ، دیوار و پیام‌رسان‌های ایرانی
   void _selectRecommendedIranianApps() {
     final domesticKeywords = [
-      "sber", "tinkoff", "tbank", "vtb", "alfa", "gosuslugi", "yandex", "vkontakte", "vk", "mail.ru",
-      "ozon", "wildberries", "avito", "rutube", "kinopoisk", "rambler", "mir", "nspk", "sberbank", "raiffeisen", "gazprom",
-      "bank", "shaparak", "snapp", "tapsi", "divar", "digikala", "bale", 
-      "eitaa", "rubika", "splus", "igap", "tejarat", "mellat", "melli", 
-      "saderat", "sepah", "blubank", "saman", "parsian", "pasargad", 
-      "refah", "keshavarzi", "maskan", "aparat", "telewebion", "torob", "emalls"
+      "sber",
+      "tinkoff",
+      "tbank",
+      "vtb",
+      "alfa",
+      "gosuslugi",
+      "yandex",
+      "vkontakte",
+      "vk",
+      "mail.ru",
+      "ozon",
+      "wildberries",
+      "avito",
+      "rutube",
+      "kinopoisk",
+      "rambler",
+      "mir",
+      "nspk",
+      "sberbank",
+      "raiffeisen",
+      "gazprom",
+      "bank",
+      "shaparak",
+      "snapp",
+      "tapsi",
+      "divar",
+      "digikala",
+      "bale",
+      "eitaa",
+      "rubika",
+      "splus",
+      "igap",
+      "tejarat",
+      "mellat",
+      "melli",
+      "saderat",
+      "sepah",
+      "blubank",
+      "saman",
+      "parsian",
+      "pasargad",
+      "refah",
+      "keshavarzi",
+      "maskan",
+      "aparat",
+      "telewebion",
+      "torob",
+      "emalls"
     ];
 
     setState(() {
       for (var app in _allApps) {
         final pkg = (app["package"] as String).toLowerCase();
         final name = (app["name"] as String).toLowerCase();
-        final isMatch = domesticKeywords.any((k) => pkg.contains(k) || name.contains(k));
+        final isMatch =
+            domesticKeywords.any((k) => pkg.contains(k) || name.contains(k));
         if (isMatch) {
           _selectedPackages.add(app["package"]);
         }
@@ -6995,7 +7996,10 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
     _saveSettings();
     final msg = widget.currentLang == "ru"
         ? "Российские и банковские приложения успешно выбраны."
-        : _l("برنامه‌های بانکی و داخلی با موفقیت انتخاب شدند.", "Банковские и российские приложения успешно выбраны.", "Banking and domestic apps selected.");
+        : _l(
+            "برنامه‌های بانکی و داخلی با موفقیت انتخاب شدند.",
+            "Банковские и российские приложения успешно выбраны.",
+            "Banking and domestic apps selected.");
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -7020,7 +8024,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
       if (_searchQuery.isNotEmpty) {
         final name = (app["name"] as String).toLowerCase();
         final pkg = (app["package"] as String).toLowerCase();
-        if (!name.contains(_searchQuery) && !pkg.contains(_searchQuery)) return false;
+        if (!name.contains(_searchQuery) && !pkg.contains(_searchQuery))
+          return false;
       }
       return true;
     }).toList();
@@ -7035,7 +8040,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
         child: Scaffold(
           appBar: AppBar(
             title: Text(
-              _l("تونل انتخابی برنامه‌ها", "Раздельное туннелирование", "Split Tunneling"),
+              _l("تونل انتخابی برنامه‌ها", "Раздельное туннелирование",
+                  "Split Tunneling"),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             centerTitle: true,
@@ -7051,18 +8057,23 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
             ],
           ),
           body: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF00F2FE)))
+              ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF00F2FE)))
               : Column(
                   children: [
                     // نوار بالای صفحه: کلید فعال‌سازی کلی
                     Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFF101726),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: _isEnabled ? const Color(0xFF00F2FE) : Colors.white12,
+                          color: _isEnabled
+                              ? const Color(0xFF00F2FE)
+                              : Colors.white12,
                           width: _isEnabled ? 1.4 : 1.0,
                         ),
                       ),
@@ -7071,14 +8082,23 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.alt_route_rounded, color: _isEnabled ? const Color(0xFF00F2FE) : Colors.grey, size: 22),
+                              Icon(Icons.alt_route_rounded,
+                                  color: _isEnabled
+                                      ? const Color(0xFF00F2FE)
+                                      : Colors.grey,
+                                  size: 22),
                               const SizedBox(width: 10),
                               Text(
-                                _l("فعال‌سازی تونل انتخابی", "Включить раздельное туннелирование", "Enable Split Tunneling"),
+                                _l(
+                                    "فعال‌سازی تونل انتخابی",
+                                    "Включить раздельное туннелирование",
+                                    "Enable Split Tunneling"),
                                 style: TextStyle(
                                   fontSize: 13.5,
                                   fontWeight: FontWeight.bold,
-                                  color: _isEnabled ? Colors.white : Colors.white70,
+                                  color: _isEnabled
+                                      ? Colors.white
+                                      : Colors.white70,
                                 ),
                               ),
                             ],
@@ -7097,7 +8117,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
 
                     // دو حالت انتخابی (بایپس یا پروکسی اختصاصی)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 4.0),
                       child: Row(
                         children: [
                           // حالت اول: بایپس (Exclude)
@@ -7108,31 +8129,50 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                 _saveSettings();
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 8),
                                 decoration: BoxDecoration(
-                                  color: _mode == "bypass" ? const Color(0xFF10B981).withOpacity(0.15) : const Color(0xFF101726),
+                                  color: _mode == "bypass"
+                                      ? const Color(0xFF10B981)
+                                          .withOpacity(0.15)
+                                      : const Color(0xFF101726),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: _mode == "bypass" ? const Color(0xFF10B981) : Colors.white10,
+                                    color: _mode == "bypass"
+                                        ? const Color(0xFF10B981)
+                                        : Colors.white10,
                                     width: _mode == "bypass" ? 1.5 : 1.0,
                                   ),
                                 ),
                                 child: Column(
                                   children: [
-                                    Icon(Icons.do_not_disturb_on_rounded, color: _mode == "bypass" ? const Color(0xFF10B981) : Colors.grey, size: 20),
+                                    Icon(Icons.do_not_disturb_on_rounded,
+                                        color: _mode == "bypass"
+                                            ? const Color(0xFF10B981)
+                                            : Colors.grey,
+                                        size: 20),
                                     const SizedBox(height: 4),
                                     Text(
-                                      _l("بایپس برنامه‌ها", "Исключения (Bypass Apps)", "Bypass Apps"),
+                                      _l(
+                                          "بایپس برنامه‌ها",
+                                          "Исключения (Bypass Apps)",
+                                          "Bypass Apps"),
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: _mode == "bypass" ? const Color(0xFF10B981) : Colors.white70,
+                                        color: _mode == "bypass"
+                                            ? const Color(0xFF10B981)
+                                            : Colors.white70,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      _l("مستقیم (بانک‌ها و اسنپ)", "Прямой доступ (без VPN)", "Direct (Bypass VPN)"),
-                                      style: const TextStyle(fontSize: 9.5, color: Colors.grey),
+                                      _l(
+                                          "مستقیم (بانک‌ها و اسنپ)",
+                                          "Прямой доступ (без VPN)",
+                                          "Direct (Bypass VPN)"),
+                                      style: const TextStyle(
+                                          fontSize: 9.5, color: Colors.grey),
                                       textAlign: TextAlign.center,
                                     ),
                                   ],
@@ -7149,31 +8189,50 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                 _saveSettings();
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 8),
                                 decoration: BoxDecoration(
-                                  color: _mode == "proxy_only" ? const Color(0xFF00F2FE).withOpacity(0.15) : const Color(0xFF101726),
+                                  color: _mode == "proxy_only"
+                                      ? const Color(0xFF00F2FE)
+                                          .withOpacity(0.15)
+                                      : const Color(0xFF101726),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: _mode == "proxy_only" ? const Color(0xFF00F2FE) : Colors.white10,
+                                    color: _mode == "proxy_only"
+                                        ? const Color(0xFF00F2FE)
+                                        : Colors.white10,
                                     width: _mode == "proxy_only" ? 1.5 : 1.0,
                                   ),
                                 ),
                                 child: Column(
                                   children: [
-                                    Icon(Icons.vpn_lock_rounded, color: _mode == "proxy_only" ? const Color(0xFF00F2FE) : Colors.grey, size: 20),
+                                    Icon(Icons.vpn_lock_rounded,
+                                        color: _mode == "proxy_only"
+                                            ? const Color(0xFF00F2FE)
+                                            : Colors.grey,
+                                        size: 20),
                                     const SizedBox(height: 4),
                                     Text(
-                                      _l("فقط پروکسی", "Только проکسی (Proxy Only)", "Proxy Only"),
+                                      _l(
+                                          "فقط پروکسی",
+                                          "Только проکسی (Proxy Only)",
+                                          "Proxy Only"),
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: _mode == "proxy_only" ? const Color(0xFF00F2FE) : Colors.white70,
+                                        color: _mode == "proxy_only"
+                                            ? const Color(0xFF00F2FE)
+                                            : Colors.white70,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      _l("فقط برنامه‌های تیک‌خورده", "Только выбранные приложения", "Only selected apps"),
-                                      style: const TextStyle(fontSize: 9.5, color: Colors.grey),
+                                      _l(
+                                          "فقط برنامه‌های تیک‌خورده",
+                                          "Только выбранные приложения",
+                                          "Only selected apps"),
+                                      style: const TextStyle(
+                                          fontSize: 9.5, color: Colors.grey),
                                       textAlign: TextAlign.center,
                                     ),
                                   ],
@@ -7187,38 +8246,59 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
 
                     // نوار ابزار: جستجو و دکمه‌های سریع
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
                       child: Row(
                         children: [
                           Expanded(
                             child: TextField(
                               controller: _searchController,
-                              onChanged: (val) => setState(() => _searchQuery = val.toLowerCase().trim()),
-                              style: const TextStyle(fontSize: 12, color: Colors.white),
+                              onChanged: (val) => setState(() =>
+                                  _searchQuery = val.toLowerCase().trim()),
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.white),
                               decoration: InputDecoration(
-                                hintText: _l("جستجوی نام برنامه...", "Поиск приложения...", "Search apps..."),
-                                hintStyle: const TextStyle(fontSize: 11.5, color: Colors.grey),
-                                prefixIcon: const Icon(Icons.search, size: 18, color: Colors.grey),
+                                hintText: _l("جستجوی نام برنامه...",
+                                    "Поиск приложения...", "Search apps..."),
+                                hintStyle: const TextStyle(
+                                    fontSize: 11.5, color: Colors.grey),
+                                prefixIcon: const Icon(Icons.search,
+                                    size: 18, color: Colors.grey),
                                 filled: true,
                                 fillColor: const Color(0xFF101726),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           IconButton(
                             icon: Icon(
-                              _includeSystemApps ? Icons.android_rounded : Icons.android_outlined,
-                              color: _includeSystemApps ? const Color(0xFF00F2FE) : Colors.grey,
+                              _includeSystemApps
+                                  ? Icons.android_rounded
+                                  : Icons.android_outlined,
+                              color: _includeSystemApps
+                                  ? const Color(0xFF00F2FE)
+                                  : Colors.grey,
                               size: 22,
                             ),
-                            tooltip: _l("نمایش برنامه‌های سیستمی", "Показывать системные приложения", "Toggle System Apps"),
-                            onPressed: () => setState(() => _includeSystemApps = !_includeSystemApps),
+                            tooltip: _l(
+                                "نمایش برنامه‌های سیستمی",
+                                "Показывать системные приложения",
+                                "Toggle System Apps"),
+                            onPressed: () => setState(
+                                () => _includeSystemApps = !_includeSystemApps),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.auto_awesome_rounded, color: Colors.amberAccent, size: 22),
-                            tooltip: _l("انتخاب خودکار بانک‌ها و برنامه‌های ایرانی", "Автовыбор банков и российских сервисов", "Auto select banking apps"),
+                            icon: const Icon(Icons.auto_awesome_rounded,
+                                color: Colors.amberAccent, size: 22),
+                            tooltip: _l(
+                                "انتخاب خودکار بانک‌ها و برنامه‌های ایرانی",
+                                "Автовыбор банков и российских сервисов",
+                                "Auto select banking apps"),
                             onPressed: _selectRecommendedIranianApps,
                           ),
                         ],
@@ -7227,15 +8307,22 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
 
                     // شمارنده برنامه‌ها
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 2.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20.0, vertical: 2.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            isFa 
-                                ? _l("انتخاب شده: ${_selectedPackages.length} برنامه", "Выбрано: ${_selectedPackages.length}", "Selected: ${_selectedPackages.length} apps")
+                            isFa
+                                ? _l(
+                                    "انتخاب شده: ${_selectedPackages.length} برنامه",
+                                    "Выбрано: ${_selectedPackages.length}",
+                                    "Selected: ${_selectedPackages.length} apps")
                                 : "Selected: ${_selectedPackages.length} apps",
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE)),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF00F2FE)),
                           ),
                           if (_selectedPackages.isNotEmpty)
                             GestureDetector(
@@ -7244,8 +8331,10 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                 _saveSettings();
                               },
                               child: Text(
-                                _l("پاک کردن انتخاب‌ها", "Сбросить выбор", "Clear all"),
-                                style: const TextStyle(fontSize: 11, color: Colors.redAccent),
+                                _l("پاک کردن انتخاب‌ها", "Сбросить выбор",
+                                    "Clear all"),
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.redAccent),
                               ),
                             ),
                         ],
@@ -7266,17 +8355,23 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                           final iconBase64 = app["icon"] as String;
 
                           return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 3),
                             decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFF101726) : Colors.transparent,
+                              color: isSelected
+                                  ? const Color(0xFF101726)
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isSelected ? const Color(0xFF00F2FE).withOpacity(0.35) : Colors.transparent,
+                                color: isSelected
+                                    ? const Color(0xFF00F2FE).withOpacity(0.35)
+                                    : Colors.transparent,
                               ),
                             ),
                             child: ListTile(
                               dense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 0),
                               leading: iconBase64.isNotEmpty
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
@@ -7284,30 +8379,43 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                         base64Decode(iconBase64),
                                         width: 36,
                                         height: 36,
-                                        errorBuilder: (_, __, ___) => const Icon(Icons.android, size: 32, color: Colors.grey),
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(Icons.android,
+                                                size: 32, color: Colors.grey),
                                       ),
                                     )
-                                  : const Icon(Icons.android, size: 32, color: Colors.grey),
+                                  : const Icon(Icons.android,
+                                      size: 32, color: Colors.grey),
                               title: Text(
                                 name,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? Colors.white : Colors.white70,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : Colors.white70,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               subtitle: Text(
                                 pkg,
-                                style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'monospace'),
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                    fontFamily: 'monospace'),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               trailing: Checkbox(
                                 value: isSelected,
-                                activeColor: _mode == "bypass" ? const Color(0xFF10B981) : const Color(0xFF00F2FE),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                activeColor: _mode == "bypass"
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFF00F2FE),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4)),
                                 onChanged: (val) {
                                   setState(() {
                                     if (val == true) {
@@ -7355,219 +8463,8 @@ class ServersManagementScreen extends StatefulWidget {
     required this.currentServers,
   });
 
-  @override
-  State<ServersManagementScreen> createState() => _ServersManagementScreenState();
-}
-
-class _ServersManagementScreenState extends State<ServersManagementScreen> {
-  String _l(String fa, String ru, String en) {
-    if (widget.currentLang == "fa") return fa;
-    if (widget.currentLang == "ru") return ru;
-    return en;
-  }
-
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = "";
-  int _selectedFilterTab = 0; // 0: All, 1: Subscriptions, 2: Manual & Custom
-
-  List<Map<String, dynamic>> _servers = [];
-  List<String> _subscriptionUrls = [];
-  int _activeServerIndex = 0;
-  bool _isTestingPing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadServersData();
-  }
-
-  Future<void> _loadServersData() async {
-    final prefs = AppPreferences.instance;
-    final String? savedJson = prefs.getString('saved_custom_servers_list_v2');
-    final List<String>? savedSubs = prefs.getStringList('saved_subscription_urls_v2');
-
-    List<Map<String, dynamic>> list = [];
-
-    if (savedJson != null) {
-      try {
-        final List<dynamic> decoded = jsonDecode(savedJson);
-        list = decoded.cast<Map<String, dynamic>>().toList();
-      } catch (_) {}
-    }
-
-    // اگر لیست خالی بود، از سرورهای اولیه برنامه پر شود
-    if (list.isEmpty) {
-      for (int i = 0; i < widget.currentServers.length; i++) {
-        final acc = widget.currentServers[i];
-        final worker = acc['worker'] ?? 'round-sea-8418.redcloudir.workers.dev';
-        final uuid = acc['uuid'] ?? '';
-        final path = acc['path'] ?? '/';
-        list.add({
-          "id": "builtin_$i",
-          "name": "Server ${i + 1}",
-          "protocol": "VLESS",
-          "address": worker,
-          "port": 443,
-          "uuid": uuid,
-          "transport": "ws",
-          "wsHost": worker,
-          "wsPath": path,
-          "security": "tls",
-          "sni": worker,
-          "fingerprint": "chrome",
-          "alpn": "http/1.1",
-          "allowInsecure": false,
-          "ech": "",
-          "ping": 0,
-          "isSubscription": false,
-          "subUrl": "",
-          "rawLink": "vless://$uuid@$worker:443?encryption=none&security=tls&sni=$worker&fp=chrome&alpn=http%2F1.1&type=ws&host=$worker&path=${Uri.encodeComponent(path)}#Server_${i + 1}",
-        });
-      }
-    }
-
-    setState(() {
-      _servers = list;
-      _subscriptionUrls = savedSubs ?? [];
-    });
-  }
-
-  Future<void> _saveServersData() async {
-    final prefs = AppPreferences.instance;
-    await prefs.setString('saved_custom_servers_list_v2', jsonEncode(_servers));
-    await prefs.setStringList('saved_subscription_urls_v2', _subscriptionUrls);
-  }
-
-  String _buildVlessLink(Map<String, dynamic> s) {
-    final uuid = s['uuid'] ?? '';
-    final address = s['address'] ?? '';
-    final port = s['port'] ?? 443;
-    final security = s['security'] ?? 'tls';
-    final sni = s['sni'] ?? address;
-    final fp = s['fingerprint'] ?? 'chrome';
-    final alpn = Uri.encodeComponent(s['alpn'] ?? 'http/1.1');
-    final transport = s['transport'] ?? 'ws';
-    final wsHost = s['wsHost'] ?? address;
-    final wsPath = Uri.encodeComponent(s['wsPath'] ?? '/');
-    final name = Uri.encodeComponent(s['name'] ?? 'RedCloud_Server');
-    return "vless://$uuid@$address:$port?encryption=none&security=$security&sni=$sni&fp=$fp&alpn=$alpn&type=$transport&host=$wsHost&path=$wsPath#$name";
-  }
-
-  Future<int> _pingAddress(String address, int port) async {
-    final stopwatch = Stopwatch()..start();
-    try {
-      final socket = await Socket.connect(address, port, timeout: const Duration(milliseconds: 1800));
-      stopwatch.stop();
-      socket.destroy();
-      return stopwatch.elapsedMilliseconds;
-    } catch (_) {
-      return -1; // تایم اوت یا فیلتر
-    }
-  }
-
-  Future<void> _testSinglePing(int index) async {
-    final s = _servers[index];
-    setState(() => s['ping'] = -2); // در حال تست
-    final ms = await _pingAddress(s['address'] ?? '1.1.1.1', s['port'] ?? 443);
-    setState(() => s['ping'] = ms);
-    _saveServersData();
-  }
-
-  Future<void> _testAllPingsAndSort() async {
-    setState(() => _isTestingPing = true);
-    for (int i = 0; i < _servers.length; i++) {
-      _servers[i]['ping'] = -2;
-    }
-    setState(() {});
-
-    final tasks = _servers.map((s) async {
-      final ms = await _pingAddress(s['address'] ?? '1.1.1.1', s['port'] ?? 443);
-      s['ping'] = ms;
-    }).toList();
-
-    await Future.wait(tasks);
-
-    // مرتب‌سازی: کمترین پینگ در بالا، پینگ‌های منفی در انتها
-    _servers.sort((a, b) {
-      final pA = a['ping'] as int;
-      final pB = b['ping'] as int;
-      if (pA <= 0 && pB <= 0) return 0;
-      if (pA <= 0) return 1;
-      if (pB <= 0) return -1;
-      return pA.compareTo(pB);
-    });
-
-    setState(() => _isTestingPing = false);
-    _saveServersData();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_l("تست پینگ به پایان رسید و سرورها مرتب شدند.", "Проверка пинга завершена, серверы отсортированы.", "Ping test completed, servers sorted.")), duration: const Duration(seconds: 2)),
-    );
-  }
-
-  void _openEditModal({Map<String, dynamic>? server, int? index}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF0E1424),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => EditServerModal(
-        server: server,
-        onSave: (updated) {
-          setState(() {
-            updated['rawLink'] = _buildVlessLink(updated);
-            if (index != null && index >= 0) {
-              _servers[index] = updated;
-            } else {
-              _servers.add(updated);
-            }
-          });
-          _saveServersData();
-        },
-      ),
-    );
-  }
-
-  void _addNewSubscriptionDialog() {
-    final subController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF101726),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFF00F2FE))),
-        title: Row(
-          children: [
-            Icon(Icons.add_link_rounded, color: Color(0xFF00F2FE)),
-            SizedBox(width: 8),
-            Text("Add New Subscription", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: TextField(
-          controller: subController,
-          style: const TextStyle(fontSize: 12),
-          decoration: const InputDecoration(
-            hintText: "https://.../sub (Marzban, 3X-UI...)",
-            hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_l("انصراف", "Отмена", "Cancel"), style: const TextStyle(color: Colors.grey))),
-          ElevatedButton(
-            onPressed: () async {
-              final url = subController.text.trim();
-              if (url.isNotEmpty) {
-                Navigator.pop(ctx);
-                _fetchSubscription(url);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00F2FE), foregroundColor: Colors.black),
-            child: Text(_l("افزودن و بروزرسانی", "Добавить и обновить", "Add & Update")),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Map<String, dynamic> _parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
+  @visibleForTesting
+  static Map<String, dynamic> parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
     final link = rawLink.trim();
     String name = defaultName;
     String protocol = "VLESS";
@@ -7639,10 +8536,251 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
     };
   }
 
-  Future<void> _fetchSubscription(String url) async {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("در حال دریافت کانفیگ‌های سابسکریپشن...", "Получение конфигураций подписки...", "Fetching subscription configs..."))));
+  @override
+  State<ServersManagementScreen> createState() =>
+      _ServersManagementScreenState();
+}
+
+class _ServersManagementScreenState extends State<ServersManagementScreen> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+  int _selectedFilterTab = 0; // 0: All, 1: Subscriptions, 2: Manual & Custom
+
+  List<Map<String, dynamic>> _servers = [];
+  List<String> _subscriptionUrls = [];
+  int _activeServerIndex = 0;
+  bool _isTestingPing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadServersData();
+  }
+
+  Future<void> _loadServersData() async {
+    final prefs = AppPreferences.instance;
+    final String? savedJson = prefs.getString('saved_custom_servers_list_v2');
+    final List<String>? savedSubs =
+        prefs.getStringList('saved_subscription_urls_v2');
+
+    List<Map<String, dynamic>> list = [];
+
+    if (savedJson != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(savedJson);
+        list = decoded.cast<Map<String, dynamic>>().toList();
+      } catch (_) {}
+    }
+
+    // اگر لیست خالی بود، از سرورهای اولیه برنامه پر شود
+    if (list.isEmpty) {
+      for (int i = 0; i < widget.currentServers.length; i++) {
+        final acc = widget.currentServers[i];
+        final worker = acc['worker'] ?? 'round-sea-8418.redcloudir.workers.dev';
+        final uuid = acc['uuid'] ?? '';
+        final path = acc['path'] ?? '/';
+        list.add({
+          "id": "builtin_$i",
+          "name": "Server ${i + 1}",
+          "protocol": "VLESS",
+          "address": worker,
+          "port": 443,
+          "uuid": uuid,
+          "transport": "ws",
+          "wsHost": worker,
+          "wsPath": path,
+          "security": "tls",
+          "sni": worker,
+          "fingerprint": "chrome",
+          "alpn": "http/1.1",
+          "allowInsecure": false,
+          "ech": "",
+          "ping": 0,
+          "isSubscription": false,
+          "subUrl": "",
+          "rawLink":
+              "vless://$uuid@$worker:443?encryption=none&security=tls&sni=$worker&fp=chrome&alpn=http%2F1.1&type=ws&host=$worker&path=${Uri.encodeComponent(path)}#Server_${i + 1}",
+        });
+      }
+    }
+
+    setState(() {
+      _servers = list;
+      _subscriptionUrls = savedSubs ?? [];
+    });
+  }
+
+  Future<void> _saveServersData() async {
+    final prefs = AppPreferences.instance;
+    await prefs.setString('saved_custom_servers_list_v2', jsonEncode(_servers));
+    await prefs.setStringList('saved_subscription_urls_v2', _subscriptionUrls);
+  }
+
+  String _buildVlessLink(Map<String, dynamic> s) {
+    final uuid = s['uuid'] ?? '';
+    final address = s['address'] ?? '';
+    final port = s['port'] ?? 443;
+    final security = s['security'] ?? 'tls';
+    final sni = s['sni'] ?? address;
+    final fp = s['fingerprint'] ?? 'chrome';
+    final alpn = Uri.encodeComponent(s['alpn'] ?? 'http/1.1');
+    final transport = s['transport'] ?? 'ws';
+    final wsHost = s['wsHost'] ?? address;
+    final wsPath = Uri.encodeComponent(s['wsPath'] ?? '/');
+    final name = Uri.encodeComponent(s['name'] ?? 'RedCloud_Server');
+    return "vless://$uuid@$address:$port?encryption=none&security=$security&sni=$sni&fp=$fp&alpn=$alpn&type=$transport&host=$wsHost&path=$wsPath#$name";
+  }
+
+  Future<int> _pingAddress(String address, int port) async {
+    final stopwatch = Stopwatch()..start();
     try {
-      final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+      final socket = await Socket.connect(address, port,
+          timeout: const Duration(milliseconds: 1800));
+      stopwatch.stop();
+      socket.destroy();
+      return stopwatch.elapsedMilliseconds;
+    } catch (_) {
+      return -1; // تایم اوت یا فیلتر
+    }
+  }
+
+  Future<void> _testSinglePing(int index) async {
+    final s = _servers[index];
+    setState(() => s['ping'] = -2); // در حال تست
+    final ms = await _pingAddress(s['address'] ?? '1.1.1.1', s['port'] ?? 443);
+    setState(() => s['ping'] = ms);
+    _saveServersData();
+  }
+
+  Future<void> _testAllPingsAndSort() async {
+    setState(() => _isTestingPing = true);
+    for (int i = 0; i < _servers.length; i++) {
+      _servers[i]['ping'] = -2;
+    }
+    setState(() {});
+
+    final tasks = _servers.map((s) async {
+      final ms =
+          await _pingAddress(s['address'] ?? '1.1.1.1', s['port'] ?? 443);
+      s['ping'] = ms;
+    }).toList();
+
+    await Future.wait(tasks);
+
+    // مرتب‌سازی: کمترین پینگ در بالا، پینگ‌های منفی در انتها
+    _servers.sort((a, b) {
+      final pA = a['ping'] as int;
+      final pB = b['ping'] as int;
+      if (pA <= 0 && pB <= 0) return 0;
+      if (pA <= 0) return 1;
+      if (pB <= 0) return -1;
+      return pA.compareTo(pB);
+    });
+
+    setState(() => _isTestingPing = false);
+    _saveServersData();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(_l(
+              "تست پینگ به پایان رسید و سرورها مرتب شدند.",
+              "Проверка пинга завершена, серверы отсортированы.",
+              "Ping test completed, servers sorted.")),
+          duration: const Duration(seconds: 2)),
+    );
+  }
+
+  void _openEditModal({Map<String, dynamic>? server, int? index}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0E1424),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => EditServerModal(
+        server: server,
+        onSave: (updated) {
+          setState(() {
+            updated['rawLink'] = _buildVlessLink(updated);
+            if (index != null && index >= 0) {
+              _servers[index] = updated;
+            } else {
+              _servers.add(updated);
+            }
+          });
+          _saveServersData();
+        },
+      ),
+    );
+  }
+
+  void _addNewSubscriptionDialog() {
+    final subController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF101726),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFF00F2FE))),
+        title: Row(
+          children: [
+            Icon(Icons.add_link_rounded, color: Color(0xFF00F2FE)),
+            SizedBox(width: 8),
+            Text("Add New Subscription",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: TextField(
+          controller: subController,
+          style: const TextStyle(fontSize: 12),
+          decoration: const InputDecoration(
+            hintText: "https://.../sub (Marzban, 3X-UI...)",
+            hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(_l("انصراف", "Отмена", "Cancel"),
+                  style: const TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            onPressed: () async {
+              final url = subController.text.trim();
+              if (url.isNotEmpty) {
+                Navigator.pop(ctx);
+                _fetchSubscription(url);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00F2FE),
+                foregroundColor: Colors.black),
+            child: Text(_l(
+                "افزودن و بروزرسانی", "Добавить и обновить", "Add & Update")),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
+    return ServersManagementScreen.parseV2RayShareLink(rawLink, defaultName: defaultName);
+  }
+
+  Future<void> _fetchSubscription(String url) async {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_l(
+            "در حال دریافت کانفیگ‌های سابسکریپشن...",
+            "Получение конфигураций подписки...",
+            "Fetching subscription configs..."))));
+    try {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 10);
       final req = await client.getUrl(Uri.parse(url));
       final resp = await req.close();
       if (resp.statusCode == 200) {
@@ -7658,10 +8796,14 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
         int added = 0;
         for (var line in lines) {
           final l = line.trim();
-          if (l.startsWith("vless://") || l.startsWith("vmess://") || l.startsWith("trojan://")) {
+          if (l.startsWith("vless://") ||
+              l.startsWith("vmess://") ||
+              l.startsWith("trojan://")) {
             try {
-              final serverMap = _parseV2RayShareLink(l, defaultName: "Sub Server ${added + 1}");
-              serverMap["id"] = "sub_${DateTime.now().millisecondsSinceEpoch}_$added";
+              final serverMap = _parseV2RayShareLink(l,
+                  defaultName: "Sub Server ${added + 1}");
+              serverMap["id"] =
+                  "sub_${DateTime.now().millisecondsSinceEpoch}_$added";
               serverMap["isSubscription"] = true;
               serverMap["subUrl"] = url;
               _servers.add(serverMap);
@@ -7673,11 +8815,19 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
         setState(() {});
         _saveServersData();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("تعداد $added سرور با موفقیت اضافه شد.", "Успешно добавлено серверов: $added.", "Successfully added $added servers."))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_l(
+                "تعداد $added سرور با موفقیت اضافه شد.",
+                "Успешно добавлено серверов: $added.",
+                "Successfully added $added servers."))));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("خطا در دریافت سابسکریپشن: $e", "Ошибка загрузки подписки: $e", "Failed to fetch subscription: $e"))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(_l(
+              "خطا در دریافت سابسکریپشن: $e",
+              "Ошибка загрузки подписки: $e",
+              "Failed to fetch subscription: $e"))));
     }
   }
 
@@ -7687,12 +8837,15 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF101726),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFF10B981))),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: Color(0xFF10B981))),
         title: Row(
           children: [
             Icon(Icons.add_box_rounded, color: Color(0xFF10B981)),
             SizedBox(width: 8),
-            Text("Add Single Config", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            Text("Add Single Config",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           ],
         ),
         content: TextField(
@@ -7710,7 +8863,8 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
               final data = await Clipboard.getData('text/plain');
               if (data?.text != null) linkController.text = data!.text!.trim();
             },
-            child: const Text("Paste Clipboard", style: TextStyle(color: Color(0xFF00F2FE))),
+            child: const Text("Paste Clipboard",
+                style: TextStyle(color: Color(0xFF00F2FE))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -7718,17 +8872,29 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
               if (link.isNotEmpty) {
                 Navigator.pop(ctx);
                 try {
-                  final newServer = _parseV2RayShareLink(link, defaultName: "Manual Config");
-                  newServer["id"] = "manual_${DateTime.now().millisecondsSinceEpoch}";
+                  final newServer =
+                      _parseV2RayShareLink(link, defaultName: "Manual Config");
+                  newServer["id"] =
+                      "manual_${DateTime.now().millisecondsSinceEpoch}";
                   setState(() => _servers.add(newServer));
                   _saveServersData();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("کانفیگ با موفقیت اضافه شد.", "Конфигурация успешно добавлена.", "Config successfully added."))));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(_l(
+                          "کانفیگ با موفقیت اضافه شد.",
+                          "Конфигурация успешно добавлена.",
+                          "Config successfully added."))));
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("فرمت لینک کانفیگ نامعتبر است.", "Неверный формат ссылки на конфигурацию.", "Invalid config link format."))));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(_l(
+                          "فرمت لینک کانفیگ نامعتبر است.",
+                          "Неверный формат ссылки на конфигурацию.",
+                          "Invalid config link format."))));
                 }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.black),
             child: Text(_l("افزودن", "Добавить", "Add")),
           ),
         ],
@@ -7747,7 +8913,10 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
         final addr = (s['address'] ?? '').toString().toLowerCase();
         final port = (s['port'] ?? '').toString();
         final proto = (s['protocol'] ?? '').toString().toLowerCase();
-        if (!name.contains(q) && !addr.contains(q) && !port.contains(q) && !proto.contains(q)) return false;
+        if (!name.contains(q) &&
+            !addr.contains(q) &&
+            !port.contains(q) &&
+            !proto.contains(q)) return false;
       }
       return true;
     }).toList();
@@ -7755,12 +8924,14 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF090D16),
       appBar: AppBar(
-        title: const Text("Servers & Subscription Management", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        title: const Text("Servers & Subscription Management",
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent),
+            icon:
+                const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent),
             tooltip: "Clear All Servers",
             onPressed: () {
               setState(() => _servers.clear());
@@ -7773,7 +8944,8 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
         children: [
           // دو دکمه اصلی در بالای صفحه: افزودن کانفیگ و سابسکریپشن (مطابق ویندوز)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
             child: Row(
               children: [
                 Expanded(
@@ -7783,10 +8955,13 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                       backgroundColor: const Color(0xFF10B981),
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text("+ Add Single Config", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    label: const Text("+ Add Single Config",
+                        style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -7797,10 +8972,13 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                       backgroundColor: const Color(0xFF00F2FE),
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: const Icon(Icons.add_link, size: 16),
-                    label: const Text("+ Add New Subscription", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    label: const Text("+ Add New Subscription",
+                        style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -7809,14 +8987,16 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
 
           // فیلتر تب‌ها (All Servers, Subscriptions, Manual) - با اسکرول افقی واکنش‌گرا
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 4.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14.0, vertical: 4.0),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               child: Row(
                 children: [
                   ChoiceChip(
-                    label: Text("All Servers (${_servers.length})", style: const TextStyle(fontSize: 11)),
+                    label: Text("All Servers (${_servers.length})",
+                        style: const TextStyle(fontSize: 11)),
                     selected: _selectedFilterTab == 0,
                     selectedColor: const Color(0xFF3B82F6),
                     backgroundColor: const Color(0xFF101726),
@@ -7824,7 +9004,9 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                   ),
                   const SizedBox(width: 6),
                   ChoiceChip(
-                    label: Text("Subscriptions (${_servers.where((s) => s['isSubscription'] == true).length})", style: const TextStyle(fontSize: 11)),
+                    label: Text(
+                        "Subscriptions (${_servers.where((s) => s['isSubscription'] == true).length})",
+                        style: const TextStyle(fontSize: 11)),
                     selected: _selectedFilterTab == 1,
                     selectedColor: const Color(0xFF00F2FE),
                     backgroundColor: const Color(0xFF101726),
@@ -7832,7 +9014,9 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                   ),
                   const SizedBox(width: 6),
                   ChoiceChip(
-                    label: Text("Manual (${_servers.where((s) => s['isSubscription'] != true).length})", style: const TextStyle(fontSize: 11)),
+                    label: Text(
+                        "Manual (${_servers.where((s) => s['isSubscription'] != true).length})",
+                        style: const TextStyle(fontSize: 11)),
                     selected: _selectedFilterTab == 2,
                     selectedColor: const Color(0xFF10B981),
                     backgroundColor: const Color(0xFF101726),
@@ -7845,22 +9029,29 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
 
           // نوار جستجو و دکمه‌های تست پینگ و آپدیت
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                    onChanged: (val) =>
+                        setState(() => _searchQuery = val.trim()),
                     style: const TextStyle(fontSize: 11.5),
                     decoration: InputDecoration(
                       hintText: "Search servers by name, port, IP, protocol...",
-                      hintStyle: const TextStyle(fontSize: 10.5, color: Colors.grey),
-                      prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                      hintStyle:
+                          const TextStyle(fontSize: 10.5, color: Colors.grey),
+                      prefixIcon: const Icon(Icons.search,
+                          size: 16, color: Colors.grey),
                       filled: true,
                       fillColor: const Color(0xFF101726),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 6, horizontal: 10),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none),
                     ),
                   ),
                 ),
@@ -7869,13 +9060,24 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                   onPressed: _isTestingPing ? null : _testAllPingsAndSort,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFF10B981)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   icon: _isTestingPing
-                      ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF10B981)))
-                      : const Icon(Icons.bolt, size: 15, color: Color(0xFF10B981)),
-                  label: const Text("Ping Test & Sort", style: TextStyle(fontSize: 10.5, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                      ? const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 1.5, color: Color(0xFF10B981)))
+                      : const Icon(Icons.bolt,
+                          size: 15, color: Color(0xFF10B981)),
+                  label: const Text("Ping Test & Sort",
+                      style: TextStyle(
+                          fontSize: 10.5,
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -7886,10 +9088,16 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
           // لیست کارت‌های سرور دقیقاً مشابه ویندوز
           Expanded(
             child: filtered.isEmpty
-                ? Center(child: Text(_l("هیچ سروری یافت نشد.", "Серверы не найдены.", "No servers found."), style: const TextStyle(color: Colors.grey, fontSize: 12)))
+                ? Center(
+                    child: Text(
+                        _l("هیچ سروری یافت نشد.", "Серверы не найдены.",
+                            "No servers found."),
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 12)))
                 : ListView.builder(
                     itemCount: filtered.length,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     itemBuilder: (ctx, idx) {
                       final s = filtered[idx];
                       final isSelected = _activeServerIndex == idx;
@@ -7905,7 +9113,11 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                         pingColor = Colors.redAccent;
                       } else if (pingVal > 0) {
                         pingText = "$pingVal ms";
-                        pingColor = pingVal < 250 ? const Color(0xFF10B981) : (pingVal < 600 ? Colors.amberAccent : Colors.redAccent);
+                        pingColor = pingVal < 250
+                            ? const Color(0xFF10B981)
+                            : (pingVal < 600
+                                ? Colors.amberAccent
+                                : Colors.redAccent);
                       }
 
                       return Container(
@@ -7915,27 +9127,40 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                           color: const Color(0xFF101726),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected ? const Color(0xFF10B981) : Colors.white10,
+                            color: isSelected
+                                ? const Color(0xFF10B981)
+                                : Colors.white10,
                             width: isSelected ? 1.4 : 1.0,
                           ),
                         ),
                         child: Row(
                           children: [
                             // شماره سرور
-                            Text("${idx + 1}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            Text("${idx + 1}",
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey)),
                             const SizedBox(width: 8),
 
                             // بج پروتکل (VLESS / VMESS / TROJAN)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF00F2FE).withOpacity(0.15),
+                                color:
+                                    const Color(0xFF00F2FE).withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: const Color(0xFF00F2FE).withOpacity(0.4)),
+                                border: Border.all(
+                                    color: const Color(0xFF00F2FE)
+                                        .withOpacity(0.4)),
                               ),
                               child: Text(
                                 s['protocol'] ?? 'VLESS',
-                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE)),
+                                style: const TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF00F2FE)),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -7947,14 +9172,22 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                                 children: [
                                   Text(
                                     s['name'] ?? 'Server',
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.white70),
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.white70),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     "${s['address']}:${s['port']}  ${(s['transport'] ?? 'ws').toString().toUpperCase()} | ${(s['security'] ?? 'tls').toString().toUpperCase()}",
-                                    style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'monospace'),
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                        fontFamily: 'monospace'),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -7966,15 +9199,21 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                             GestureDetector(
                               onTap: () => _testSinglePing(idx),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: pingColor.withOpacity(0.12),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.bolt, size: 12, color: pingColor),
-                                    Text(pingText, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: pingColor)),
+                                    Icon(Icons.bolt,
+                                        size: 12, color: pingColor),
+                                    Text(pingText,
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: pingColor)),
                                   ],
                                 ),
                               ),
@@ -7983,25 +9222,34 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
 
                             // دکمه کپی لینک
                             IconButton(
-                              icon: const Icon(Icons.copy_rounded, size: 15, color: Colors.grey),
+                              icon: const Icon(Icons.copy_rounded,
+                                  size: 15, color: Colors.grey),
                               tooltip: "Copy Link",
                               onPressed: () {
                                 final link = s['rawLink'] ?? _buildVlessLink(s);
                                 Clipboard.setData(ClipboardData(text: link));
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_l("لینک کانفیگ کپی شد!", "Ссылка на конфигурацию скопирована!", "Config link copied!"))));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(_l(
+                                            "لینک کانفیگ کپی شد!",
+                                            "Ссылка на конфигурацию скопирована!",
+                                            "Config link copied!"))));
                               },
                             ),
 
                             // دکمه ویرایش (Pencil)
                             IconButton(
-                              icon: const Icon(Icons.edit_rounded, size: 15, color: Colors.grey),
+                              icon: const Icon(Icons.edit_rounded,
+                                  size: 15, color: Colors.grey),
                               tooltip: "Edit Config",
-                              onPressed: () => _openEditModal(server: s, index: idx),
+                              onPressed: () =>
+                                  _openEditModal(server: s, index: idx),
                             ),
 
                             // دکمه حذف
                             IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, size: 15, color: Colors.redAccent),
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  size: 15, color: Colors.redAccent),
                               tooltip: "Delete",
                               onPressed: () {
                                 setState(() => _servers.removeAt(idx));
@@ -8012,9 +9260,13 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
                             // دکمه انتخاب سرور فعال (تیک سبز)
                             IconButton(
                               icon: Icon(
-                                isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                                isSelected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.radio_button_unchecked,
                                 size: 18,
-                                color: isSelected ? const Color(0xFF10B981) : Colors.grey,
+                                color: isSelected
+                                    ? const Color(0xFF10B981)
+                                    : Colors.grey,
                               ),
                               tooltip: "Select Active",
                               onPressed: () {
@@ -8042,7 +9294,8 @@ class EditServerModal extends StatefulWidget {
   final String currentLang;
   final Function(Map<String, dynamic>) onSave;
 
-  const EditServerModal({super.key, this.server, this.currentLang = "ru", required this.onSave});
+  const EditServerModal(
+      {super.key, this.server, this.currentLang = "ru", required this.onSave});
 
   @override
   State<EditServerModal> createState() => _EditServerModalState();
@@ -8082,13 +9335,17 @@ class _EditServerModalState extends State<EditServerModal> {
     _alpn = s['alpn'] ?? "http/1.1";
     _allowInsecure = s['allowInsecure'] == true;
 
-    _nameController = TextEditingController(text: s['name'] ?? "RedCloud Server");
+    _nameController =
+        TextEditingController(text: s['name'] ?? "RedCloud Server");
     _addressController = TextEditingController(text: s['address'] ?? "");
-    _portController = TextEditingController(text: (s['port'] ?? 443).toString());
+    _portController =
+        TextEditingController(text: (s['port'] ?? 443).toString());
     _uuidController = TextEditingController(text: s['uuid'] ?? "");
-    _wsHostController = TextEditingController(text: s['wsHost'] ?? s['address'] ?? "");
+    _wsHostController =
+        TextEditingController(text: s['wsHost'] ?? s['address'] ?? "");
     _wsPathController = TextEditingController(text: s['wsPath'] ?? "/");
-    _sniController = TextEditingController(text: s['sni'] ?? s['address'] ?? "");
+    _sniController =
+        TextEditingController(text: s['sni'] ?? s['address'] ?? "");
     _echController = TextEditingController(text: s['ech'] ?? "");
   }
 
@@ -8105,7 +9362,10 @@ class _EditServerModalState extends State<EditServerModal> {
     super.dispose();
   }
 
-  Widget _buildField({required String label, required TextEditingController controller, bool isNumber = false}) {
+  Widget _buildField(
+      {required String label,
+      required TextEditingController controller,
+      bool isNumber = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Column(
@@ -8116,12 +9376,16 @@ class _EditServerModalState extends State<EditServerModal> {
           TextField(
             controller: controller,
             keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-            style: const TextStyle(fontSize: 12, color: Colors.white, fontFamily: 'monospace'),
+            style: const TextStyle(
+                fontSize: 12, color: Colors.white, fontFamily: 'monospace'),
             decoration: InputDecoration(
               filled: true,
               fillColor: const Color(0xFF101726),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none),
             ),
           ),
         ],
@@ -8145,10 +9409,18 @@ class _EditServerModalState extends State<EditServerModal> {
           children: [
             Row(
               children: [
-                const Icon(Icons.edit_note_rounded, color: Color(0xFFC084FC), size: 22),
+                const Icon(Icons.edit_note_rounded,
+                    color: Color(0xFFC084FC), size: 22),
                 const SizedBox(width: 8),
-                Text(_l("ویرایش کانفیگ سرور", "Редактирование конфигурации сервера", "Edit Server Configuration"),
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                Text(
+                  _l(
+                      "ویرایش کانفیگ سرور",
+                      "Редактирование конфигурации сервера",
+                      "Edit Server Configuration"),
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
               ],
             ),
@@ -8157,58 +9429,104 @@ class _EditServerModalState extends State<EditServerModal> {
             // پروتکل اتصال
             Row(
               children: [
-                Text(_l("پروتکل اتصال:", "Протокол подключения:", "Connection Protocol:"), style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
+                Text(
+                    _l("پروتکل اتصال:", "Протокол подключения:",
+                        "Connection Protocol:"),
+                    style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
                 const SizedBox(width: 12),
                 DropdownButton<String>(
                   value: _protocol,
                   dropdownColor: const Color(0xFF101726),
                   underline: const SizedBox.shrink(),
-                  style: const TextStyle(color: Color(0xFF00F2FE), fontWeight: FontWeight.bold, fontSize: 12),
-                  onChanged: (val) => setState(() => _protocol = val ?? "VLESS"),
-                  items: ["VLESS", "VMESS", "TROJAN"].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                  style: const TextStyle(
+                      color: Color(0xFF00F2FE),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12),
+                  onChanged: (val) =>
+                      setState(() => _protocol = val ?? "VLESS"),
+                  items: ["VLESS", "VMESS", "TROJAN"]
+                      .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                      .toList(),
                 ),
               ],
             ),
             const SizedBox(height: 8),
 
-            _buildField(label: _l("نام / برچسب سرور", "Название / Метка сервера", "Alias / Remarks"), controller: _nameController),
+            _buildField(
+                label: _l("نام / برچسب سرور", "Название / Метка сервера",
+                    "Alias / Remarks"),
+                controller: _nameController),
 
             Row(
               children: [
-                Expanded(flex: 3, child: _buildField(label: _l("آدرس سرور", "Адрес сервера", "Server Address"), controller: _addressController)),
+                Expanded(
+                    flex: 3,
+                    child: _buildField(
+                        label:
+                            _l("آدرس سرور", "Адрес сервера", "Server Address"),
+                        controller: _addressController)),
                 const SizedBox(width: 8),
-                Expanded(flex: 1, child: _buildField(label: _l("پورت", "Порт", "Port"), controller: _portController, isNumber: true)),
+                Expanded(
+                    flex: 1,
+                    child: _buildField(
+                        label: _l("پورت", "Порт", "Port"),
+                        controller: _portController,
+                        isNumber: true)),
               ],
             ),
 
-            _buildField(label: _l("شناسه / رمز عبور (UUID)", "UUID / Пароль", "UUID / Password"), controller: _uuidController),
+            _buildField(
+                label: _l("شناسه / رمز عبور (UUID)", "UUID / Пароль",
+                    "UUID / Password"),
+                controller: _uuidController),
 
             // پروتکل انتقال
             Row(
               children: [
-                Text(_l("پروتکل انتقال:", "Протокол транспорта:", "Transport Protocol:"), style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
+                Text(
+                    _l("پروتکل انتقال:", "Протокол транспорта:",
+                        "Transport Protocol:"),
+                    style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
                 const SizedBox(width: 12),
                 DropdownButton<String>(
                   value: _transport,
                   dropdownColor: const Color(0xFF101726),
                   underline: const SizedBox.shrink(),
-                  style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 12),
+                  style: const TextStyle(
+                      color: Color(0xFF10B981),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12),
                   onChanged: (val) => setState(() => _transport = val ?? "WS"),
-                  items: ["WS", "TCP", "GRPC"].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  items: ["WS", "TCP", "GRPC"]
+                      .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                      .toList(),
                 ),
               ],
             ),
             const SizedBox(height: 8),
 
-            _buildField(label: _l("هاست WebSocket", "WebSocket Host", "WebSocket Host"), controller: _wsHostController),
-            _buildField(label: _l("مسیر WebSocket", "WebSocket Path", "WebSocket Path"), controller: _wsPathController),
+            _buildField(
+                label: _l("هاست WebSocket", "WebSocket Host", "WebSocket Host"),
+                controller: _wsHostController),
+            _buildField(
+                label: _l("مسیر WebSocket", "WebSocket Path", "WebSocket Path"),
+                controller: _wsPathController),
 
-            Text(_l("تنظیمات امنیتی TLS و Reality", "Настройки безопасности TLS & Reality", "TLS & Reality Security Settings"), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFC084FC))),
+            Text(
+                _l(
+                    "تنظیمات امنیتی TLS و Reality",
+                    "Настройки безопасности TLS & Reality",
+                    "TLS & Reality Security Settings"),
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFC084FC))),
             const SizedBox(height: 8),
 
             Row(
               children: [
-                Text(_l("نوع امنیت:", "Тип безопасности:", "Security Type:"), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(_l("نوع امنیت:", "Тип безопасности:", "Security Type:"),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 const SizedBox(width: 8),
                 DropdownButton<String>(
                   value: _security,
@@ -8216,28 +9534,45 @@ class _EditServerModalState extends State<EditServerModal> {
                   underline: const SizedBox.shrink(),
                   style: const TextStyle(color: Colors.white, fontSize: 11),
                   onChanged: (val) => setState(() => _security = val ?? "TLS"),
-                  items: ["TLS", "NONE", "REALITY"].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  items: ["TLS", "NONE", "REALITY"]
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
                 ),
                 const SizedBox(width: 12),
-                Text(_l("отпечаток (Fingerprint):", "Отпечаток (Fingerprint):", "Fingerprint:"), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(
+                    _l("отпечаток (Fingerprint):", "Отпечаток (Fingerprint):",
+                        "Fingerprint:"),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 const SizedBox(width: 6),
                 DropdownButton<String>(
                   value: _fingerprint,
                   dropdownColor: const Color(0xFF101726),
                   underline: const SizedBox.shrink(),
                   style: const TextStyle(color: Colors.white, fontSize: 11),
-                  onChanged: (val) => setState(() => _fingerprint = val ?? "chrome"),
-                  items: ["chrome", "firefox", "safari", "randomized"].map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
+                  onChanged: (val) =>
+                      setState(() => _fingerprint = val ?? "chrome"),
+                  items: ["chrome", "firefox", "safari", "randomized"]
+                      .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                      .toList(),
                 ),
               ],
             ),
 
-            _buildField(label: _l("نام سرور (SNI / Peer)", "Имя сервера (SNI / Peer)", "Server Name (SNI / Peer)"), controller: _sniController),
+            _buildField(
+                label: _l("نام سرور (SNI / Peer)", "Имя сервера (SNI / Peer)",
+                    "Server Name (SNI / Peer)"),
+                controller: _sniController),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_l("اجازه به گواهی‌های ناامن", "Разрешить ненадежные сертификаты", "Allow Insecure Certificates"), style: const TextStyle(fontSize: 11.5, color: Colors.white70)),
+                Text(
+                    _l(
+                        "اجازه به گواهی‌های ناامن",
+                        "Разрешить ненадежные сертификаты",
+                        "Allow Insecure Certificates"),
+                    style:
+                        const TextStyle(fontSize: 11.5, color: Colors.white70)),
                 Switch(
                   value: _allowInsecure,
                   activeColor: const Color(0xFFC084FC),
@@ -8246,7 +9581,10 @@ class _EditServerModalState extends State<EditServerModal> {
               ],
             ),
 
-            _buildField(label: _l("تنظیمات ECH (EchConfigList)", "Конфигурация ECH (EchConfigList)", "ECH Config List"), controller: _echController),
+            _buildField(
+                label: _l("تنظیمات ECH (EchConfigList)",
+                    "Конфигурация ECH (EchConfigList)", "ECH Config List"),
+                controller: _echController),
 
             const SizedBox(height: 12),
             Row(
@@ -8254,13 +9592,15 @@ class _EditServerModalState extends State<EditServerModal> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text(_l("انصراف", "Отмена", "Cancel"), style: const TextStyle(color: Colors.grey)),
+                  child: Text(_l("انصراف", "Отмена", "Cancel"),
+                      style: const TextStyle(color: Colors.grey)),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () {
                     final data = {
-                      "id": widget.server?['id'] ?? "custom_${DateTime.now().millisecondsSinceEpoch}",
+                      "id": widget.server?['id'] ??
+                          "custom_${DateTime.now().millisecondsSinceEpoch}",
                       "name": _nameController.text.trim(),
                       "protocol": _protocol,
                       "address": _addressController.text.trim(),
@@ -8276,7 +9616,8 @@ class _EditServerModalState extends State<EditServerModal> {
                       "allowInsecure": _allowInsecure,
                       "ech": _echController.text.trim(),
                       "ping": widget.server?['ping'] ?? 0,
-                      "isSubscription": widget.server?['isSubscription'] ?? false,
+                      "isSubscription":
+                          widget.server?['isSubscription'] ?? false,
                       "subUrl": widget.server?['subUrl'] ?? "",
                     };
                     widget.onSave(data);
@@ -8285,9 +9626,11 @@ class _EditServerModalState extends State<EditServerModal> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFC084FC),
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text("Save Changes",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
