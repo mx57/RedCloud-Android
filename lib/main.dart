@@ -1365,13 +1365,19 @@ class HomePageState extends State<HomePage> {
     _torProgressTimer?.cancel();
     try {
       await flutterV2ray.stopV2Ray();
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping V2Ray: $e", isError: true);
+    }
     try {
       await _torChannel.invokeMethod('killAllCores');
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping Tor cores: $e", isError: true);
+    }
     try {
       await _aetherChannel.invokeMethod('stopAether');
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping Aether: $e", isError: true);
+    }
     await _saveEngineState(ActiveEngine.none);
     await Future.delayed(const Duration(milliseconds: 300));
   }
