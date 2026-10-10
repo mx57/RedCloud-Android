@@ -199,18 +199,16 @@ class HomePage extends StatefulWidget {
     required this.changeLang,
   });
 
-  @visibleForTesting
-  static String countryCodeToEmoji(String countryCode) {
-    if (countryCode.length != 2) return "🌐";
-    final String upper = countryCode.toUpperCase();
-    final int first = upper.codeUnitAt(0);
-    final int second = upper.codeUnitAt(1);
-    if (first < 0x41 || first > 0x5A || second < 0x41 || second > 0x5A) {
-      return "🌐";
+  static String formatBytes(int bytes, {bool isSpeed = false}) {
+    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
+    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
+    int i = 0;
+    double num = bytes.toDouble();
+    while (num >= 1024 && i < suffixes.length - 1) {
+      num /= 1024;
+      i++;
     }
-    final int firstLetter = first - 0x41 + 0x1F1E6;
-    final int secondLetter = second - 0x41 + 0x1F1E6;
-    return String.fromCharCode(firstLetter) + String.fromCharCode(secondLetter);
+    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
   }
 
   @override
@@ -2269,17 +2267,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _formatBytes(int bytes, {bool isSpeed = false}) {
-    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
-    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
-    int i = 0;
-    double num = bytes.toDouble();
-    while (num >= 1024 && i < suffixes.length - 1) {
-      num /= 1024;
-      i++;
-    }
-    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
-  }
 
   void _parseAndSaveConfig(String link, {bool updateUI = true}) {
     if (link.isEmpty) return;
@@ -5372,7 +5359,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        _formatBytes(isConnected ? value.downloadSpeed : 0, isSpeed: true),
+                        HomePage.formatBytes(isConnected ? value.downloadSpeed : 0, isSpeed: true),
                         style: const TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold,
@@ -5422,7 +5409,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        _formatBytes(isConnected ? value.uploadSpeed : 0, isSpeed: true),
+                        HomePage.formatBytes(isConnected ? value.uploadSpeed : 0, isSpeed: true),
                         style: const TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold,
