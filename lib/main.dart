@@ -1203,9 +1203,19 @@ class _HomePageState extends State<HomePage> {
     _torProgressTimer?.cancel();
     try {
       await flutterV2ray.stopV2Ray();
-    } catch (_) {}
-    try { await _torChannel.invokeMethod('killAllCores'); } catch (_) {}
-    try { await _aetherChannel.invokeMethod('stopAether'); } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE-RESET", "Failed to stop V2Ray engine: $e", isError: true);
+    }
+    try {
+      await _torChannel.invokeMethod('killAllCores');
+    } catch (e) {
+      AppLogger.log("ENGINE-RESET", "Failed to kill Tor cores: $e", isError: true);
+    }
+    try {
+      await _aetherChannel.invokeMethod('stopAether');
+    } catch (e) {
+      AppLogger.log("ENGINE-RESET", "Failed to stop Aether engine: $e", isError: true);
+    }
     await _saveEngineState(ActiveEngine.none);
     await Future.delayed(const Duration(milliseconds: 300));
   }
