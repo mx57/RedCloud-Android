@@ -711,7 +711,9 @@ class _HomePageState extends State<HomePage> {
 
         final socket = await Socket.connect('127.0.0.1', targetPort, timeout: const Duration(seconds: 2));
         socket.destroy();
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("HEARTBEAT-ERR", "Heartbeat check error: $e");
+      }
     });
   }
 
