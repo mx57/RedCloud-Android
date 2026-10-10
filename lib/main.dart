@@ -8493,7 +8493,221 @@ class ServersManagementScreen extends StatefulWidget {
   });
 
   @visibleForTesting
-  static Map<String, dynamic> parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
+  static String buildVlessLink(Map<String, dynamic> s) {
+    final uuid = s['uuid'] ?? '';
+    final address = s['address'] ?? '';
+    final port = s['port'] ?? 443;
+    final security = s['security'] ?? 'tls';
+    final sni = s['sni'] ?? address;
+    final fp = s['fingerprint'] ?? 'chrome';
+    final alpn = Uri.encodeComponent(s['alpn'] ?? 'http/1.1');
+    final transport = s['transport'] ?? 'ws';
+    final wsHost = s['wsHost'] ?? address;
+    final wsPath = Uri.encodeComponent(s['wsPath'] ?? '/');
+    final name = Uri.encodeComponent(s['name'] ?? 'RedCloud_Server');
+    return "vless://$uuid@$address:$port?encryption=none&security=$security&sni=$sni&fp=$fp&alpn=$alpn&type=$transport&host=$wsHost&path=$wsPath#$name";
+  }
+
+  @override
+  State<ServersManagementScreen> createState() => _ServersManagementScreenState();
+}
+
+class _ServersManagementScreenState extends State<ServersManagementScreen> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+  int _selectedFilterTab = 0; // 0: All, 1: Subscriptions, 2: Manual & Custom
+
+  List<Map<String, dynamic>> _servers = [];
+  List<String> _subscriptionUrls = [];
+  int _activeServerIndex = 0;
+  bool _isTestingPing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadServersData();
+  }
+
+  Future<void> _loadServersData() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? savedJson = prefs.getString('saved_custom_servers_list_v2');
+    final List<String>? savedSubs = prefs.getStringList('saved_subscription_urls_v2');
+
+    List<Map<String, dynamic>> list = [];
+
+    if (savedJson != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(savedJson);
+        list = decoded.cast<Map<String, dynamic>>().toList();
+      } catch (_) {}
+    }
+
+    // اگر لیست خالی بود، از سرورهای اولیه برنامه پر شود
+    if (list.isEmpty) {
+      for (int i = 0; i < widget.currentServers.length; i++) {
+        final acc = widget.currentServers[i];
+        final worker = acc['worker'] ?? 'round-sea-8418.redcloudir.workers.dev';
+        final uuid = acc['uuid'] ?? '';
+        final path = acc['path'] ?? '/';
+        list.add({
+          "id": "builtin_$i",
+          "name": "Server ${i + 1}",
+          "protocol": "VLESS",
+          "address": worker,
+          "port": 443,
+          "uuid": uuid,
+          "transport": "ws",
+          "wsHost": worker,
+          "wsPath": path,
+          "security": "tls",
+          "sni": worker,
+          "fingerprint": "chrome",
+          "alpn": "http/1.1",
+          "allowInsecure": false,
+          "ech": "",
+          "ping": 0,
+          "isSubscription": false,
+          "subUrl": "",
+          "rawLink": "vless://$uuid@$worker:443?encryption=none&security=tls&sni=$worker&fp=chrome&alpn=http%2F1.1&type=ws&host=$worker&path=${Uri.encodeComponent(path)}#Server_${i + 1}",
+        });
+      }
+    }
+
+    setState(() {
+      _servers = list;
+      _subscriptionUrls = savedSubs ?? [];
+    });
+  }
+
+  Future<void> _saveServersData() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_custom_servers_list_v2', jsonEncode(_servers));
+    await prefs.setStringList('saved_subscription_urls_v2', _subscriptionUrls);
+  }
+
+  String _buildVlessLink(Map<String, dynamic> s) => ServersManagementScreen.buildVlessLink(s);
+
+  Future<int> _pingAddress(String address, int port) async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      final socket = await Socket.connect(address, port, timeout: const Duration(milliseconds: 1800));
+      stopwatch.stop();
+      socket.destroy();
+      return stopwatch.elapsedMilliseconds;
+    } catch (_) {
+      return -1; // تایم اوت یا فیلتر
+    }
+  }
+
+  Future<void> _testSinglePing(int index) async {
+    final s = _servers[index];
+    setState(() => s['ping'] = -2); // در حال تست
+    final ms = await _pingAddress(s['address'] ?? '1.1.1.1', s['port'] ?? 443);
+    setState(() => s['ping'] = ms);
+    _saveServersData();
+  }
+
+  Future<void> _testAllPingsAndSort() async {
+    setState(() => _isTestingPing = true);
+    for (int i = 0; i < _servers.length; i++) {
+      _servers[i]['ping'] = -2;
+    }
+    setState(() {});
+
+    final tasks = _servers.map((s) async {
+      final ms = await _pingAddress(s['address'] ?? '1.1.1.1', s['port'] ?? 443);
+      s['ping'] = ms;
+    }).toList();
+
+    await Future.wait(tasks);
+
+    // مرتب‌سازی: کمترین پینگ در بالا، پینگ‌های منفی در انتها
+    _servers.sort((a, b) {
+      final pA = a['ping'] as int;
+      final pB = b['ping'] as int;
+      if (pA <= 0 && pB <= 0) return 0;
+      if (pA <= 0) return 1;
+      if (pB <= 0) return -1;
+      return pA.compareTo(pB);
+    });
+
+    setState(() => _isTestingPing = false);
+    _saveServersData();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_l("تست پینگ به پایان رسید و سرورها مرتب شدند.", "Проверка пинга завершена, серверы отсортированы.", "Ping test completed, servers sorted.")), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  void _openEditModal({Map<String, dynamic>? server, int? index}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0E1424),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => EditServerModal(
+        server: server,
+        onSave: (updated) {
+          setState(() {
+            updated['rawLink'] = _buildVlessLink(updated);
+            if (index != null && index >= 0) {
+              _servers[index] = updated;
+            } else {
+              _servers.add(updated);
+            }
+          });
+          _saveServersData();
+        },
+      ),
+    );
+  }
+
+  void _addNewSubscriptionDialog() {
+    final subController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF101726),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFF00F2FE))),
+        title: Row(
+          children: [
+            Icon(Icons.add_link_rounded, color: Color(0xFF00F2FE)),
+            SizedBox(width: 8),
+            Text("Add New Subscription", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: TextField(
+          controller: subController,
+          style: const TextStyle(fontSize: 12),
+          decoration: const InputDecoration(
+            hintText: "https://.../sub (Marzban, 3X-UI...)",
+            hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_l("انصراف", "Отмена", "Cancel"), style: const TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            onPressed: () async {
+              final url = subController.text.trim();
+              if (url.isNotEmpty) {
+                Navigator.pop(ctx);
+                _fetchSubscription(url);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00F2FE), foregroundColor: Colors.black),
+            child: Text(_l("افزودن و بروزرسانی", "Добавить и обновить", "Add & Update")),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
     final link = rawLink.trim();
     String name = defaultName;
     String protocol = "VLESS";
