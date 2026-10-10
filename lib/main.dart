@@ -1175,7 +1175,9 @@ class HomePageState extends State<HomePage> {
           if (savedShield != null) _webrtcShield = savedShield;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ROUTING-ERR", "Ошибка загрузки настроек маршрутизации: $e", isError: true);
+    }
   }
 
   Future<void> _setWebRtcShieldSetting(bool value) async {
@@ -1187,7 +1189,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
     } catch (e) {
-      AppLogger.log("SHIELD", "Ошибка сохранения WebRTC: $e", isError: true);
+      AppLogger.log("SHIELD-ERR", "Ошибка сохранения защиты WebRTC: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
@@ -1205,7 +1207,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
     } catch (e) {
-      AppLogger.log("HYBRID", "Ошибка сохранения гибридного режима: $e", isError: true);
+      AppLogger.log("HYBRID-ERR", "Ошибка сохранения гибридного режима: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
@@ -1223,7 +1225,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
     } catch (e) {
-      AppLogger.log("ROUTING", "Ошибка сохранения прямого обхода: $e", isError: true);
+      AppLogger.log("ROUTING-ERR", "Ошибка сохранения обхода сайтов: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
