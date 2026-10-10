@@ -909,7 +909,8 @@ class HomePageState extends State<HomePage> {
             }
           }
         }
-      }, onError: (_) {
+      }, onError: (e) {
+        AppLogger.log("TELEMETRY", "Socket error during SOCKS5 query: $e", isError: true);
         if (!completer.isCompleted) completer.complete(null);
       }, onDone: () {
         if (!completer.isCompleted) completer.complete(null);
@@ -920,12 +921,15 @@ class HomePageState extends State<HomePage> {
       });
 
       return await completer.future;
-    } catch (_) {
+    } catch (e) {
+      AppLogger.log("TELEMETRY", "Error in _querySocks5Json: $e", isError: true);
       return null;
     } finally {
       try {
         socket?.destroy();
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("TELEMETRY", "Error destroying socket in _querySocks5Json: $e", isError: true);
+      }
     }
   }
 
