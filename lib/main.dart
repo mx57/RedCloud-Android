@@ -8483,6 +8483,15 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   }
 }
 
+int compareServerPing(Map<String, dynamic> a, Map<String, dynamic> b) {
+  final pA = a['ping'] as int? ?? 0;
+  final pB = b['ping'] as int? ?? 0;
+  if (pA <= 0 && pB <= 0) return 0;
+  if (pA <= 0) return 1;
+  if (pB <= 0) return -1;
+  return pA.compareTo(pB);
+}
+
 // =========================================================================
 // صفحه مدیریت سرورها و سابسکریپشن (Servers & Subscription Management)
 // =========================================================================
@@ -8632,14 +8641,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
     await Future.wait(tasks);
 
     // مرتب‌سازی: کمترین پینگ در بالا، پینگ‌های منفی در انتها
-    _servers.sort((a, b) {
-      final pA = a['ping'] as int;
-      final pB = b['ping'] as int;
-      if (pA <= 0 && pB <= 0) return 0;
-      if (pA <= 0) return 1;
-      if (pB <= 0) return -1;
-      return pA.compareTo(pB);
-    });
+    _servers.sort(compareServerPing);
 
     setState(() => _isTestingPing = false);
     _saveServersData();
