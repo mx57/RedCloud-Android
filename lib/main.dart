@@ -180,7 +180,7 @@ class _MyAppState extends State<MyApp> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('saved_dark_mode', _isDarkMode);
     } catch (e) {
-      AppLogger.log("SETTINGS", "Failed to save dark mode setting: $e", isError: true);
+      AppLogger.log("SETTINGS", "Error saving theme preference: $e", isError: true);
     }
   }
 
@@ -193,7 +193,7 @@ class _MyAppState extends State<MyApp> {
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
     } catch (e) {
-      AppLogger.log("SETTINGS", "Failed to save language setting: $e", isError: true);
+      AppLogger.log("SETTINGS", "Error saving language preference: $e", isError: true);
     }
   }
 
