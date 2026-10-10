@@ -200,10 +200,10 @@ class HomePage extends StatefulWidget {
   });
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   String _l(String fa, String ru, String en) {
     if (widget.currentLang == "fa") return fa;
     if (widget.currentLang == "ru") return ru;
@@ -720,7 +720,8 @@ class _HomePageState extends State<HomePage> {
     _heartbeatTimer = null;
   }
 
-  Future<Map<String, dynamic>?> _querySocks5Json(int socksPort, String targetHost, String path, {int timeoutMs = 4500}) async {
+  @visibleForTesting
+  Future<Map<String, dynamic>?> querySocks5Json(int socksPort, String targetHost, String path, {int timeoutMs = 4500}) async {
     final stopwatch = Stopwatch()..start();
     Socket? socket;
     try {
@@ -820,11 +821,11 @@ class _HomePageState extends State<HomePage> {
     if (_activeEngine == ActiveEngine.psiphon) targetSocksPort = 9081;
 
     try {
-      Map<String, dynamic>? data = await _querySocks5Json(targetSocksPort, "ip-api.com", "/json/", timeoutMs: 3500);
+      Map<String, dynamic>? data = await querySocks5Json(targetSocksPort, "ip-api.com", "/json/", timeoutMs: 3500);
       
       if (data == null || data['status'] != 'success') {
         await Future.delayed(const Duration(milliseconds: 300));
-        final fallbackData = await _querySocks5Json(targetSocksPort, "ipwho.is", "/", timeoutMs: 4000);
+        final fallbackData = await querySocks5Json(targetSocksPort, "ipwho.is", "/", timeoutMs: 4000);
         if (fallbackData != null && (fallbackData['success'] == true || fallbackData['ip'] != null)) {
           data = {
             'status': 'success',
