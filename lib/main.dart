@@ -202,6 +202,18 @@ class HomePage extends StatefulWidget {
     required this.changeLang,
   });
 
+  static String formatBytes(int bytes, {bool isSpeed = false}) {
+    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
+    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
+    int i = 0;
+    double num = bytes.toDouble();
+    while (num >= 1024 && i < suffixes.length - 1) {
+      num /= 1024;
+      i++;
+    }
+    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
+  }
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -776,7 +788,9 @@ class _HomePageState extends State<HomePage> {
         final socket = await Socket.connect('127.0.0.1', targetPort,
             timeout: const Duration(seconds: 2));
         socket.destroy();
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("HEARTBEAT-ERR", "Heartbeat check error: $e");
+      }
     });
   }
 
@@ -2463,17 +2477,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _formatBytes(int bytes, {bool isSpeed = false}) {
-    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
-    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
-    int i = 0;
-    double num = bytes.toDouble();
-    while (num >= 1024 && i < suffixes.length - 1) {
-      num /= 1024;
-      i++;
-    }
-    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
-  }
 
   void _parseAndSaveConfig(String link, {bool updateUI = true}) {
     if (link.isEmpty) return;
