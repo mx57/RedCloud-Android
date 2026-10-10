@@ -180,7 +180,7 @@ class _MyAppState extends State<MyApp> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('saved_dark_mode', _isDarkMode);
     } catch (e) {
-      AppLogger.log("THEME", "Failed to save theme setting: $e", isError: true);
+      AppLogger.log("SETTINGS", "Error saving theme preference: $e", isError: true);
     }
   }
 
@@ -193,7 +193,7 @@ class _MyAppState extends State<MyApp> {
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
     } catch (e) {
-      AppLogger.log("LANG", "Failed to save language setting: $e", isError: true);
+      AppLogger.log("SETTINGS", "Error saving language preference: $e", isError: true);
     }
   }
 
@@ -425,7 +425,9 @@ class HomePageState extends State<HomePage> {
           _atcRemainingDays = (info['remainingDays'] as num?)?.toInt() ?? 30;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("AETHER", "Error fetching ATC account info: $e", isError: true);
+    }
   }
 
   String _torStepStatus = "";
@@ -1116,7 +1118,7 @@ class HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setString('active_engine_state', engine.name);
     } catch (e) {
-      AppLogger.log("STATE", "Failed to save engine state: $e", isError: true);
+      AppLogger.log("STATE", "Error saving engine state: $e", isError: true);
     }
   }
 
@@ -1144,7 +1146,7 @@ class HomePageState extends State<HomePage> {
         });
       }
     } catch (e) {
-      AppLogger.log("SETTINGS", "Failed to load split tunnel settings: $e", isError: true);
+      AppLogger.log("SPLIT-TUNNEL", "Error loading split tunnel settings: $e", isError: true);
     }
   }
 
@@ -1180,7 +1182,7 @@ class HomePageState extends State<HomePage> {
         });
       }
     } catch (e) {
-      AppLogger.log("SETTINGS", "Failed to load bypass/hybrid settings: $e", isError: true);
+      AppLogger.log("SETTINGS", "Error loading routing/bypass settings: $e", isError: true);
     }
   }
 
@@ -1193,7 +1195,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
     } catch (e) {
-      AppLogger.log("SHIELD", "Failed to save WebRTC shield setting: $e", isError: true);
+      AppLogger.log("SHIELD", "Error saving WebRTC shield setting: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
@@ -1211,7 +1213,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
     } catch (e) {
-      AppLogger.log("HYBRID", "Failed to save hybrid mode setting: $e", isError: true);
+      AppLogger.log("HYBRID", "Error saving hybrid mode setting: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
@@ -1229,7 +1231,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
     } catch (e) {
-      AppLogger.log("ROUTING", "Failed to save bypass Iran setting: $e", isError: true);
+      AppLogger.log("ROUTING", "Error saving bypass setting: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
@@ -7946,7 +7948,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
           });
         }
       }
-    } catch (_) {
+    } catch (e) {
+      AppLogger.log("SPLIT-TUNNEL", "Error fetching installed applications: $e", isError: true);
       if (mounted) setState(() => _isLoading = false);
     }
   }
