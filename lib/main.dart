@@ -18,6 +18,21 @@ const String appPackageName = "com.redcloud.vpn.redcloud_android";
 
 enum ActiveEngine { none, dashboard, aether, tor, psiphon }
 
+class DataLimitChecker {
+  static const int defaultMaxDailyBytes = 5 * 1024 * 1024 * 1024; // 5 GB
+
+  static int calculateTotalUsage(Map<String, String>? currentAccount, int totalBytesSession) {
+    if (currentAccount == null) return totalBytesSession;
+    final int previouslyUsedDatabase = int.tryParse(currentAccount['used_bytes'] ?? '0') ?? 0;
+    return previouslyUsedDatabase + totalBytesSession;
+  }
+
+  static bool isLimitExhausted(Map<String, String>? currentAccount, int totalBytesSession, {int maxDailyBytes = defaultMaxDailyBytes}) {
+    final int currentRealtimeDailyUsage = calculateTotalUsage(currentAccount, totalBytesSession);
+    return currentRealtimeDailyUsage >= maxDailyBytes;
+  }
+}
+
 class LogEntry {
   final DateTime time;
   final String tag;
@@ -2813,12 +2828,11 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _checkAndAutoSwitchLimit(Map<String, String> currentAccount, int totalBytesSession) async {
-    final int previouslyUsedDatabase = int.tryParse(currentAccount['used_bytes'] ?? '0') ?? 0;
-    final int currentRealtimeDailyUsage = previouslyUsedDatabase + totalBytesSession;
+  @visibleForTesting
+  void checkAndAutoSwitchLimit(Map<String, String> currentAccount, int totalBytesSession) async {
     final String activeWorker = currentAccount['worker'] ?? '';
 
-    if (currentRealtimeDailyUsage >= _maxDailyBytes) {
+    if (DataLimitChecker.isLimitExhausted(currentAccount, totalBytesSession, maxDailyBytes: _maxDailyBytes)) {
       _locallyExhaustedWorkers.add(activeWorker);
       await _saveExhaustedWorkers();
       _showSnackBar(_t("limit_exhausted_banner"));
@@ -2833,6 +2847,10 @@ class _HomePageState extends State<HomePage> {
         _connectDashboard();
       }
     }
+  }
+
+  void _checkAndAutoSwitchLimit(Map<String, String> currentAccount, int totalBytesSession) {
+    checkAndAutoSwitchLimit(currentAccount, totalBytesSession);
   }
 
   Future<void> _loadExhaustedWorkers() async {
