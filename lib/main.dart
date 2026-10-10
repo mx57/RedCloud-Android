@@ -248,10 +248,10 @@ class HomePage extends StatefulWidget {
   }
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   String _l(String fa, String ru, String en) {
     if (widget.currentLang == "fa") return fa;
     if (widget.currentLang == "ru") return ru;
@@ -1365,8 +1365,12 @@ class _HomePageState extends State<HomePage> {
     await Future.delayed(const Duration(milliseconds: 300));
   }
 
-  Future<Map<String, dynamic>?> _verifyDnsIp(String ip,
-      {int timeoutMs = 1500}) async {
+  Future<Map<String, dynamic>?> _verifyDnsIp(String ip, {int timeoutMs = 1500, int port = 53}) async {
+    return verifyDnsIp(ip, timeoutMs: timeoutMs, port: port);
+  }
+
+  @visibleForTesting
+  static Future<Map<String, dynamic>?> verifyDnsIp(String ip, {int timeoutMs = 1500, int port = 53}) async {
     RawDatagramSocket? socket;
     try {
       final InternetAddress targetAddress = InternetAddress(ip.trim());
@@ -1404,7 +1408,7 @@ class _HomePageState extends State<HomePage> {
       ];
 
       final stopwatch = Stopwatch()..start();
-      socket.send(dnsQuery, targetAddress, 53);
+      socket.send(dnsQuery, targetAddress, port);
 
       final completer = Completer<Map<String, dynamic>?>();
       socket.listen((RawSocketEvent event) {
