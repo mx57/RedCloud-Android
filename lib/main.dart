@@ -179,7 +179,9 @@ class _MyAppState extends State<MyApp> {
     try {
       final prefs = AppPreferences.instance;
       await prefs.setBool('saved_dark_mode', _isDarkMode);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("THEME", "Ошибка сохранения темы: $e", isError: true);
+    }
   }
 
   void _changeLang(String lang) async {
@@ -190,7 +192,9 @@ class _MyAppState extends State<MyApp> {
       final prefs = AppPreferences.instance;
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("LANG", "Ошибка сохранения языка: $e", isError: true);
+    }
   }
 
   @override
@@ -1204,7 +1208,9 @@ class HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SHIELD", "Ошибка сохранения защиты WebRTC: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1220,7 +1226,9 @@ class HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("HYBRID", "Ошибка сохранения гибридного режима: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1236,7 +1244,9 @@ class HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ROUTING", "Ошибка сохранения обхода сайтов РФ/СНГ: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1257,13 +1267,16 @@ class HomePageState extends State<HomePage> {
         if (engine != ActiveEngine.none) {
           bool aetherAlive = false;
           bool torAlive = false;
-          try {
-            aetherAlive =
-                await _aetherChannel.invokeMethod('isAetherRunning') ?? false;
-          } catch (_) {}
-          try {
-            torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false;
-          } catch (_) {}
+          try { 
+            aetherAlive = await _aetherChannel.invokeMethod('isAetherRunning') ?? false; 
+          } catch (e) {
+            AppLogger.log("AETHER", "Ошибка проверки состояния Aether: $e", isError: true);
+          }
+          try { 
+            torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false; 
+          } catch (e) {
+            AppLogger.log("TOR", "Ошибка проверки состояния Tor: $e", isError: true);
+          }
 
           if (engine == ActiveEngine.aether && aetherAlive) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.aether);
@@ -1320,7 +1333,9 @@ class HomePageState extends State<HomePage> {
           }
           await _torChannel.invokeMethod('clearNativeLogs');
         }
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("TOR", "Ошибка получения логов Tor: $e", isError: true);
+      }
     });
 
     _reportTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
@@ -2168,7 +2183,9 @@ class HomePageState extends State<HomePage> {
               }
             }
           }
-        } catch (_) {}
+        } catch (e) {
+          AppLogger.log("TOR", "Ошибка получения статуса Tor: $e", isError: true);
+        }
       });
 
       for (int i = 0; i < 180; i++) {
