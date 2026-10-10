@@ -144,7 +144,9 @@ class _MyAppState extends State<MyApp> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('saved_dark_mode', _isDarkMode);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SETTINGS", "Failed to save dark mode setting: $e", isError: true);
+    }
   }
 
   void _changeLang(String lang) async {
@@ -155,7 +157,9 @@ class _MyAppState extends State<MyApp> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SETTINGS", "Failed to save language setting: $e", isError: true);
+    }
   }
 
   @override
