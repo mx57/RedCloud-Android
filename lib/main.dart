@@ -2268,6 +2268,20 @@ class _HomePageState extends State<HomePage> {
     return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
   }
 
+  @visibleForTesting
+  void parseAndSaveConfigForTesting(String link, {bool updateUI = true}) {
+    _parseAndSaveConfig(link, updateUI: updateUI);
+  }
+
+  @visibleForTesting
+  String get fullConfigJsonForTesting => _fullConfigJson;
+
+  @visibleForTesting
+  String get serverNameForTesting => _serverName;
+
+  @visibleForTesting
+  String get protocolTypeForTesting => _protocolType;
+
   void _parseAndSaveConfig(String link, {bool updateUI = true}) {
     if (link.isEmpty) return;
     String configText = link;
