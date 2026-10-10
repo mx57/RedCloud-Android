@@ -1187,7 +1187,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
     } catch (e) {
-      AppLogger.log("SHIELD", "Ошибка сохранения защиты WebRTC: $e", isError: true);
+      AppLogger.log("SHIELD", "Ошибка сохранения WebRTC: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
@@ -1223,7 +1223,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
     } catch (e) {
-      AppLogger.log("ROUTING", "Ошибка сохранения обхода сайтов РФ/СНГ: $e", isError: true);
+      AppLogger.log("ROUTING", "Ошибка сохранения прямого обхода: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
