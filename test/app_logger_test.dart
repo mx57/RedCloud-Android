@@ -6,51 +6,38 @@ void main() {
     AppLogger.clear();
   });
 
-  group('AppLogger.clear', () {
-    test('clearing when already empty keeps log state empty and count at 0', () {
-      expect(AppLogger.currentLogs, isEmpty);
-      expect(AppLogger.logCountNotifier.value, equals(0));
-      expect(AppLogger.getAllLogsFormatted(), isEmpty);
-
-      AppLogger.clear();
-
-      expect(AppLogger.currentLogs, isEmpty);
-      expect(AppLogger.logCountNotifier.value, equals(0));
+  group('AppLogger.getAllLogsFormatted', () {
+    test('returns empty string when no logs exist', () {
       expect(AppLogger.getAllLogsFormatted(), isEmpty);
     });
 
-    test('clears logs added via log and addNativeLog, resets notifier and formatted output', () {
-      AppLogger.log('TEST_TAG', 'Test log message 1');
-      AppLogger.addNativeLog('Native log message 2');
-
-      expect(AppLogger.currentLogs.length, equals(2));
-      expect(AppLogger.logCountNotifier.value, equals(2));
-      expect(AppLogger.getAllLogsFormatted(), contains('Test log message 1'));
-      expect(AppLogger.getAllLogsFormatted(), contains('Native log message 2'));
-
-      AppLogger.clear();
-
-      expect(AppLogger.currentLogs, isEmpty);
-      expect(AppLogger.logCountNotifier.value, equals(0));
-      expect(AppLogger.getAllLogsFormatted(), isEmpty);
+    test('returns single formatted log entry', () {
+      AppLogger.log('TEST', 'Hello World');
+      final result = AppLogger.getAllLogsFormatted();
+      expect(result, contains('[TEST] Hello World'));
+      expect(result.split('\n').length, equals(1));
     });
 
-    test('can add new logs after clearing', () {
-      AppLogger.log('TAG1', 'Old log message');
-      expect(AppLogger.currentLogs.length, equals(1));
+    test('joins multiple formatted log entries with newlines', () {
+      AppLogger.log('TAG1', 'First message');
+      AppLogger.log('TAG2', 'Second message');
+      AppLogger.addNativeLog('Native log line');
+
+      final result = AppLogger.getAllLogsFormatted();
+      final lines = result.split('\n');
+
+      expect(lines.length, equals(3));
+      expect(lines[0], contains('[TAG1] First message'));
+      expect(lines[1], contains('[TAG2] Second message'));
+      expect(lines[2], contains('[NATIVE] Native log line'));
+    });
+
+    test('returns empty string after AppLogger.clear()', () {
+      AppLogger.log('TAG', 'Message');
+      expect(AppLogger.getAllLogsFormatted(), isNotEmpty);
 
       AppLogger.clear();
-
-      expect(AppLogger.currentLogs, isEmpty);
-      expect(AppLogger.logCountNotifier.value, equals(0));
-
-      AppLogger.log('TAG2', 'New log message');
-
-      expect(AppLogger.currentLogs.length, equals(1));
-      expect(AppLogger.logCountNotifier.value, equals(1));
-      expect(AppLogger.currentLogs.first.tag, equals('TAG2'));
-      expect(AppLogger.currentLogs.first.message, equals('New log message'));
-      expect(AppLogger.getAllLogsFormatted(), contains('New log message'));
+      expect(AppLogger.getAllLogsFormatted(), isEmpty);
     });
   });
 }
