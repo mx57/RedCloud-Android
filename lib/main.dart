@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use, avoid_print
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -54,7 +54,7 @@ class AppLogger {
     );
 
     if (kDebugMode) {
-      print(entry.format());
+      debugPrint(entry.format());
     }
 
     if (_logs.length >= maxLogs) {
