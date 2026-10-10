@@ -96,10 +96,28 @@ class AppLogger {
   }
 }
 
+class AppPreferences {
+  static SharedPreferences? _instance;
+
+  static Future<SharedPreferences> init([SharedPreferences? mockInstance]) async {
+    _instance = mockInstance ?? await SharedPreferences.getInstance();
+    return _instance!;
+  }
+
+  static SharedPreferences get instance {
+    if (_instance == null) {
+      throw StateError('AppPreferences is not initialized. Call AppPreferences.init() first.');
+    }
+    return _instance!;
+  }
+
+  static bool get isInitialized => _instance != null;
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  
+  final SharedPreferences prefs = await AppPreferences.init();
   final String initialLang = prefs.getString('saved_app_language') ?? 'fa';
   final bool initialDarkMode = prefs.getBool('saved_dark_mode') ?? true;
   final bool isFirstRun = prefs.getBool('first_launch_lang_selected') != true;
@@ -144,7 +162,7 @@ class _MyAppState extends State<MyApp> {
       _isDarkMode = !_isDarkMode;
     });
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       await prefs.setBool('saved_dark_mode', _isDarkMode);
     } catch (_) {}
   }
@@ -154,7 +172,7 @@ class _MyAppState extends State<MyApp> {
       _currentLang = lang;
     });
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
     } catch (_) {}
@@ -1104,7 +1122,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _saveEngineState(ActiveEngine engine) async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       await prefs.setString('active_engine_state', engine.name);
     } catch (_) {}
   }
@@ -1117,7 +1135,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadSplitTunnelSettings() async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       final bool? enabled = prefs.getBool('split_tunnel_enabled');
       final String? mode = prefs.getString('split_tunnel_mode');
       final List<String>? selected =
@@ -1155,7 +1173,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadBypassIranSetting() async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       final bool? savedBypass = prefs.getBool('bypass_iran_traffic');
       final bool? savedHybrid = prefs.getBool('hybrid_mode_traffic');
       final bool? savedShield = prefs.getBool('webrtc_shield_traffic');
@@ -1174,7 +1192,7 @@ class _HomePageState extends State<HomePage> {
       _webrtcShield = value;
     });
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
     } catch (_) {}
@@ -1190,7 +1208,7 @@ class _HomePageState extends State<HomePage> {
       _isHybridMode = value;
     });
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
     } catch (_) {}
@@ -1206,7 +1224,7 @@ class _HomePageState extends State<HomePage> {
       _bypassIran = value;
     });
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
     } catch (_) {}
@@ -1219,7 +1237,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _restoreSavedState() async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       final String? savedState = prefs.getString('active_engine_state');
       if (savedState != null) {
         final ActiveEngine engine = ActiveEngine.values.firstWhere(
@@ -3052,7 +3070,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadExhaustedWorkers() async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = AppPreferences.instance;
       final String? jsonStr = prefs.getString('exhausted_workers_data');
       if (jsonStr != null) {
         final Map<String, dynamic> data = jsonDecode(jsonStr);
@@ -3073,15 +3091,12 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _saveExhaustedWorkers() async {
     try {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String todayDate =
-          DateTime.now().toIso8601String().substring(0, 10);
-      await prefs.setString(
-          'exhausted_workers_data',
-          jsonEncode({
-            'date': todayDate,
-            'workers': _locallyExhaustedWorkers.toList(),
-          }));
+      final prefs = AppPreferences.instance;
+      final String todayDate = DateTime.now().toIso8601String().substring(0, 10);
+      await prefs.setString('exhausted_workers_data', jsonEncode({
+        'date': todayDate,
+        'workers': _locallyExhaustedWorkers.toList(),
+      }));
     } catch (_) {}
   }
 
@@ -7864,7 +7879,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   }
 
   Future<void> _loadSettingsAndApps() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = AppPreferences.instance;
     final bool savedEnabled = prefs.getBool('split_tunnel_enabled') ?? false;
     final String savedMode = prefs.getString('split_tunnel_mode') ?? "bypass";
     final List<String> savedSelected =
@@ -7907,7 +7922,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   }
 
   Future<void> _saveSettings() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = AppPreferences.instance;
     await prefs.setBool('split_tunnel_enabled', _isEnabled);
     await prefs.setString('split_tunnel_mode', _mode);
     await prefs.setStringList(
@@ -8549,7 +8564,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
   }
 
   Future<void> _loadServersData() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = AppPreferences.instance;
     final String? savedJson = prefs.getString('saved_custom_servers_list_v2');
     final List<String>? savedSubs =
         prefs.getStringList('saved_subscription_urls_v2');
@@ -8602,7 +8617,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
   }
 
   Future<void> _saveServersData() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = AppPreferences.instance;
     await prefs.setString('saved_custom_servers_list_v2', jsonEncode(_servers));
     await prefs.setStringList('saved_subscription_urls_v2', _subscriptionUrls);
   }
