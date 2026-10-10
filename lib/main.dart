@@ -8448,6 +8448,79 @@ class ServersManagementScreen extends StatefulWidget {
     required this.currentServers,
   });
 
+  @visibleForTesting
+  static Map<String, dynamic> parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
+    final link = rawLink.trim();
+    String name = defaultName;
+    String protocol = "VLESS";
+    String address = "";
+    int port = 443;
+    String uuid = "";
+    String transport = "ws";
+    String wsHost = "";
+    String wsPath = "/";
+    String security = "tls";
+    String sni = "";
+    String fingerprint = "chrome";
+    String alpn = "http/1.1";
+
+    try {
+      if (link.startsWith("vmess://")) {
+        protocol = "VMESS";
+        final b64 = link.substring(8).trim();
+        final jsonStr = utf8.decode(base64Decode(base64.normalize(b64)));
+        final Map<String, dynamic> vmessMap = jsonDecode(jsonStr);
+        name = vmessMap['ps']?.toString() ?? defaultName;
+        address = vmessMap['add']?.toString() ?? "";
+        port = int.tryParse(vmessMap['port']?.toString() ?? '443') ?? 443;
+        uuid = vmessMap['id']?.toString() ?? "";
+        transport = vmessMap['net']?.toString() ?? "ws";
+        wsHost = vmessMap['host']?.toString() ?? address;
+        wsPath = vmessMap['path']?.toString() ?? "/";
+        security = (vmessMap['tls']?.toString() == "tls") ? "tls" : "none";
+        sni = vmessMap['sni']?.toString() ?? wsHost;
+      } else if (link.startsWith("vless://") || link.startsWith("trojan://")) {
+        protocol = link.startsWith("trojan://") ? "TROJAN" : "VLESS";
+        final uri = Uri.parse(link);
+        uuid = uri.userInfo;
+        address = uri.host;
+        port = uri.port > 0 ? uri.port : 443;
+        if (uri.fragment.isNotEmpty) {
+          name = Uri.decodeComponent(uri.fragment);
+        }
+        final q = uri.queryParameters;
+        transport = q['type'] ?? q['net'] ?? "ws";
+        security = q['security'] ?? "tls";
+        sni = q['sni'] ?? q['peer'] ?? address;
+        wsHost = q['host'] ?? sni;
+        wsPath = q['path'] ?? "/";
+        fingerprint = q['fp'] ?? "chrome";
+        alpn = q['alpn'] ?? "http/1.1";
+      }
+    } catch (_) {}
+
+    return {
+      "name": name.isNotEmpty ? name : defaultName,
+      "protocol": protocol,
+      "address": address,
+      "port": port,
+      "uuid": uuid,
+      "transport": transport,
+      "wsHost": wsHost.isNotEmpty ? wsHost : address,
+      "wsPath": wsPath.isNotEmpty ? wsPath : "/",
+      "security": security,
+      "sni": sni.isNotEmpty ? sni : address,
+      "fingerprint": fingerprint,
+      "alpn": alpn,
+      "allowInsecure": false,
+      "ech": "",
+      "ping": 0,
+      "isSubscription": false,
+      "subUrl": "",
+      "rawLink": link,
+    };
+  }
+
   @override
   State<ServersManagementScreen> createState() =>
       _ServersManagementScreenState();
@@ -8680,77 +8753,8 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
     );
   }
 
-  Map<String, dynamic> _parseV2RayShareLink(String rawLink,
-      {String defaultName = "Server"}) {
-    final link = rawLink.trim();
-    String name = defaultName;
-    String protocol = "VLESS";
-    String address = "";
-    int port = 443;
-    String uuid = "";
-    String transport = "ws";
-    String wsHost = "";
-    String wsPath = "/";
-    String security = "tls";
-    String sni = "";
-    String fingerprint = "chrome";
-    String alpn = "http/1.1";
-
-    try {
-      if (link.startsWith("vmess://")) {
-        protocol = "VMESS";
-        final b64 = link.substring(8).trim();
-        final jsonStr = utf8.decode(base64Decode(base64.normalize(b64)));
-        final Map<String, dynamic> vmessMap = jsonDecode(jsonStr);
-        name = vmessMap['ps']?.toString() ?? defaultName;
-        address = vmessMap['add']?.toString() ?? "";
-        port = int.tryParse(vmessMap['port']?.toString() ?? '443') ?? 443;
-        uuid = vmessMap['id']?.toString() ?? "";
-        transport = vmessMap['net']?.toString() ?? "ws";
-        wsHost = vmessMap['host']?.toString() ?? address;
-        wsPath = vmessMap['path']?.toString() ?? "/";
-        security = (vmessMap['tls']?.toString() == "tls") ? "tls" : "none";
-        sni = vmessMap['sni']?.toString() ?? wsHost;
-      } else if (link.startsWith("vless://") || link.startsWith("trojan://")) {
-        protocol = link.startsWith("trojan://") ? "TROJAN" : "VLESS";
-        final uri = Uri.parse(link);
-        uuid = uri.userInfo;
-        address = uri.host;
-        port = uri.port > 0 ? uri.port : 443;
-        if (uri.fragment.isNotEmpty) {
-          name = Uri.decodeComponent(uri.fragment);
-        }
-        final q = uri.queryParameters;
-        transport = q['type'] ?? q['net'] ?? "ws";
-        security = q['security'] ?? "tls";
-        sni = q['sni'] ?? q['peer'] ?? address;
-        wsHost = q['host'] ?? sni;
-        wsPath = q['path'] ?? "/";
-        fingerprint = q['fp'] ?? "chrome";
-        alpn = q['alpn'] ?? "http/1.1";
-      }
-    } catch (_) {}
-
-    return {
-      "name": name.isNotEmpty ? name : defaultName,
-      "protocol": protocol,
-      "address": address,
-      "port": port,
-      "uuid": uuid,
-      "transport": transport,
-      "wsHost": wsHost.isNotEmpty ? wsHost : address,
-      "wsPath": wsPath.isNotEmpty ? wsPath : "/",
-      "security": security,
-      "sni": sni.isNotEmpty ? sni : address,
-      "fingerprint": fingerprint,
-      "alpn": alpn,
-      "allowInsecure": false,
-      "ech": "",
-      "ping": 0,
-      "isSubscription": false,
-      "subUrl": "",
-      "rawLink": link,
-    };
+  Map<String, dynamic> _parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
+    return ServersManagementScreen.parseV2RayShareLink(rawLink, defaultName: defaultName);
   }
 
   Future<void> _fetchSubscription(String url) async {
