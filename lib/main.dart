@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use, avoid_print
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -19,6 +19,21 @@ const String usdtBnbAddress = "0xDeda28Aa73Ec089A77B3fC616E0011a8fce12900";
 const String appPackageName = "com.redcloud.vpn.redcloud_android";
 
 enum ActiveEngine { none, dashboard, aether, tor, psiphon }
+
+class DataLimitChecker {
+  static const int defaultMaxDailyBytes = 5 * 1024 * 1024 * 1024; // 5 GB
+
+  static int calculateTotalUsage(Map<String, String>? currentAccount, int totalBytesSession) {
+    if (currentAccount == null) return totalBytesSession;
+    final int previouslyUsedDatabase = int.tryParse(currentAccount['used_bytes'] ?? '0') ?? 0;
+    return previouslyUsedDatabase + totalBytesSession;
+  }
+
+  static bool isLimitExhausted(Map<String, String>? currentAccount, int totalBytesSession, {int maxDailyBytes = defaultMaxDailyBytes}) {
+    final int currentRealtimeDailyUsage = calculateTotalUsage(currentAccount, totalBytesSession);
+    return currentRealtimeDailyUsage >= maxDailyBytes;
+  }
+}
 
 class LogEntry {
   final DateTime time;
@@ -56,7 +71,7 @@ class AppLogger {
     );
 
     if (kDebugMode) {
-      print(entry.format());
+      debugPrint(entry.format());
     }
 
     if (_logs.length >= maxLogs) {
@@ -164,7 +179,9 @@ class _MyAppState extends State<MyApp> {
     try {
       final prefs = AppPreferences.instance;
       await prefs.setBool('saved_dark_mode', _isDarkMode);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("THEME", "Ошибка сохранения темы: $e", isError: true);
+    }
   }
 
   void _changeLang(String lang) async {
@@ -175,7 +192,9 @@ class _MyAppState extends State<MyApp> {
       final prefs = AppPreferences.instance;
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("LANG", "Ошибка сохранения языка: $e", isError: true);
+    }
   }
 
   @override
@@ -220,23 +239,92 @@ class HomePage extends StatefulWidget {
     required this.changeLang,
   });
 
-  static String formatBytes(int bytes, {bool isSpeed = false}) {
-    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
-    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
-    int i = 0;
-    double num = bytes.toDouble();
-    while (num >= 1024 && i < suffixes.length - 1) {
-      num /= 1024;
-      i++;
+  @visibleForTesting
+  static Future<Map<String, dynamic>?> querySocks5Json(int socksPort, String targetHost, String path, {int timeoutMs = 4500}) async {
+    final stopwatch = Stopwatch()..start();
+    Socket? socket;
+    try {
+      socket = await Socket.connect('127.0.0.1', socksPort, timeout: Duration(milliseconds: timeoutMs));
+
+      socket.add([0x05, 0x01, 0x00]);
+      await socket.flush();
+
+      final completer = Completer<Map<String, dynamic>?>();
+      final List<int> buffer = [];
+      int stage = 0;
+
+      socket.listen((data) {
+        buffer.addAll(data);
+
+        if (stage == 0) {
+          if (buffer.length >= 2) {
+            if (buffer[0] == 0x05 && buffer[1] == 0x00) {
+              buffer.clear();
+              stage = 1;
+              final hostBytes = utf8.encode(targetHost);
+              final connectReq = [
+                0x05, 0x01, 0x00, 0x03, hostBytes.length, ...hostBytes, 0x00, 0x50
+              ];
+              socket?.add(connectReq);
+              socket?.flush();
+            } else {
+              if (!completer.isCompleted) completer.complete(null);
+            }
+          }
+        } else if (stage == 1) {
+          if (buffer.length >= 10) {
+            if (buffer[0] == 0x05 && buffer[1] == 0x00) {
+              buffer.clear();
+              stage = 2;
+              final httpRequest = "GET $path HTTP/1.1\r\n"
+                  "Host: $targetHost\r\n"
+                  "User-Agent: Mozilla/5.0 (Android; Linux)\r\n"
+                  "Connection: close\r\n\r\n";
+              socket?.add(utf8.encode(httpRequest));
+              socket?.flush();
+            } else {
+              if (!completer.isCompleted) completer.complete(null);
+            }
+          }
+        } else if (stage == 2) {
+          final responseText = utf8.decode(buffer, allowMalformed: true);
+          if (responseText.contains("\r\n\r\n")) {
+            final parts = responseText.split("\r\n\r\n");
+            if (parts.length > 1) {
+              final jsonPart = parts.sublist(1).join("\r\n\r\n").trim();
+              try {
+                final Map<String, dynamic> parsed = jsonDecode(jsonPart);
+                stopwatch.stop();
+                parsed['pingMs'] = stopwatch.elapsedMilliseconds;
+                if (!completer.isCompleted) completer.complete(parsed);
+                return;
+              } catch (_) {}
+            }
+          }
+        }
+      }, onError: (_) {
+        if (!completer.isCompleted) completer.complete(null);
+      }, onDone: () {
+        if (!completer.isCompleted) completer.complete(null);
+      });
+
+      Timer(Duration(milliseconds: timeoutMs), () {
+        if (!completer.isCompleted) completer.complete(null);
+      });
+
+      return await completer.future;
+    } catch (_) {
+      return null;
+    } finally {
+      try { socket?.destroy(); } catch (_) {}
     }
-    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
   }
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   String _l(String fa, String ru, String en) {
     if (widget.currentLang == "fa") return fa;
     if (widget.currentLang == "ru") return ru;
@@ -817,98 +905,6 @@ class _HomePageState extends State<HomePage> {
     _heartbeatTimer = null;
   }
 
-  Future<Map<String, dynamic>?> _querySocks5Json(
-      int socksPort, String targetHost, String path,
-      {int timeoutMs = 4500}) async {
-    final stopwatch = Stopwatch()..start();
-    Socket? socket;
-    try {
-      socket = await Socket.connect('127.0.0.1', socksPort,
-          timeout: Duration(milliseconds: timeoutMs));
-
-      socket.add([0x05, 0x01, 0x00]);
-      await socket.flush();
-
-      final completer = Completer<Map<String, dynamic>?>();
-      final List<int> buffer = [];
-      int stage = 0;
-
-      socket.listen((data) {
-        buffer.addAll(data);
-
-        if (stage == 0) {
-          if (buffer.length >= 2) {
-            if (buffer[0] == 0x05 && buffer[1] == 0x00) {
-              buffer.clear();
-              stage = 1;
-              final hostBytes = utf8.encode(targetHost);
-              final connectReq = [
-                0x05,
-                0x01,
-                0x00,
-                0x03,
-                hostBytes.length,
-                ...hostBytes,
-                0x00,
-                0x50
-              ];
-              socket?.add(connectReq);
-              socket?.flush();
-            } else {
-              if (!completer.isCompleted) completer.complete(null);
-            }
-          }
-        } else if (stage == 1) {
-          if (buffer.length >= 10) {
-            if (buffer[0] == 0x05 && buffer[1] == 0x00) {
-              buffer.clear();
-              stage = 2;
-              final httpRequest = "GET $path HTTP/1.1\r\n"
-                  "Host: $targetHost\r\n"
-                  "User-Agent: Mozilla/5.0 (Android; Linux)\r\n"
-                  "Connection: close\r\n\r\n";
-              socket?.add(utf8.encode(httpRequest));
-              socket?.flush();
-            } else {
-              if (!completer.isCompleted) completer.complete(null);
-            }
-          }
-        } else if (stage == 2) {
-          final responseText = utf8.decode(buffer, allowMalformed: true);
-          if (responseText.contains("\r\n\r\n")) {
-            final parts = responseText.split("\r\n\r\n");
-            if (parts.length > 1) {
-              final jsonPart = parts.sublist(1).join("\r\n\r\n").trim();
-              try {
-                final Map<String, dynamic> parsed = jsonDecode(jsonPart);
-                stopwatch.stop();
-                parsed['pingMs'] = stopwatch.elapsedMilliseconds;
-                if (!completer.isCompleted) completer.complete(parsed);
-                return;
-              } catch (_) {}
-            }
-          }
-        }
-      }, onError: (_) {
-        if (!completer.isCompleted) completer.complete(null);
-      }, onDone: () {
-        if (!completer.isCompleted) completer.complete(null);
-      });
-
-      Timer(Duration(milliseconds: timeoutMs), () {
-        if (!completer.isCompleted) completer.complete(null);
-      });
-
-      return await completer.future;
-    } catch (_) {
-      return null;
-    } finally {
-      try {
-        socket?.destroy();
-      } catch (_) {}
-    }
-  }
-
   Future<void> _fetchPublicIpAndPing() async {
     if (_activeEngine == ActiveEngine.none) return;
 
@@ -929,17 +925,12 @@ class _HomePageState extends State<HomePage> {
     if (_activeEngine == ActiveEngine.psiphon) targetSocksPort = 9081;
 
     try {
-      Map<String, dynamic>? data = await _querySocks5Json(
-          targetSocksPort, "ip-api.com", "/json/",
-          timeoutMs: 3500);
-
+      Map<String, dynamic>? data = await HomePage.querySocks5Json(targetSocksPort, "ip-api.com", "/json/", timeoutMs: 3500);
+      
       if (data == null || data['status'] != 'success') {
         await Future.delayed(const Duration(milliseconds: 300));
-        final fallbackData = await _querySocks5Json(
-            targetSocksPort, "ipwho.is", "/",
-            timeoutMs: 4000);
-        if (fallbackData != null &&
-            (fallbackData['success'] == true || fallbackData['ip'] != null)) {
+        final fallbackData = await HomePage.querySocks5Json(targetSocksPort, "ipwho.is", "/", timeoutMs: 4000);
+        if (fallbackData != null && (fallbackData['success'] == true || fallbackData['ip'] != null)) {
           data = {
             'status': 'success',
             'query': fallbackData['ip'],
@@ -1195,7 +1186,9 @@ class _HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SHIELD", "Ошибка сохранения защиты WebRTC: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1211,7 +1204,9 @@ class _HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("HYBRID", "Ошибка сохранения гибридного режима: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1227,7 +1222,9 @@ class _HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ROUTING", "Ошибка сохранения обхода сайтов РФ/СНГ: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1248,13 +1245,16 @@ class _HomePageState extends State<HomePage> {
         if (engine != ActiveEngine.none) {
           bool aetherAlive = false;
           bool torAlive = false;
-          try {
-            aetherAlive =
-                await _aetherChannel.invokeMethod('isAetherRunning') ?? false;
-          } catch (_) {}
-          try {
-            torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false;
-          } catch (_) {}
+          try { 
+            aetherAlive = await _aetherChannel.invokeMethod('isAetherRunning') ?? false; 
+          } catch (e) {
+            AppLogger.log("AETHER", "Ошибка проверки состояния Aether: $e", isError: true);
+          }
+          try { 
+            torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false; 
+          } catch (e) {
+            AppLogger.log("TOR", "Ошибка проверки состояния Tor: $e", isError: true);
+          }
 
           if (engine == ActiveEngine.aether && aetherAlive) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.aether);
@@ -1311,7 +1311,9 @@ class _HomePageState extends State<HomePage> {
           }
           await _torChannel.invokeMethod('clearNativeLogs');
         }
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("TOR", "Ошибка получения логов Tor: $e", isError: true);
+      }
     });
 
     _reportTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
@@ -1339,19 +1341,29 @@ class _HomePageState extends State<HomePage> {
     _torProgressTimer?.cancel();
     try {
       await flutterV2ray.stopV2Ray();
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping V2Ray: $e", isError: true);
+    }
     try {
       await _torChannel.invokeMethod('killAllCores');
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping Tor cores: $e", isError: true);
+    }
     try {
       await _aetherChannel.invokeMethod('stopAether');
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping Aether: $e", isError: true);
+    }
     await _saveEngineState(ActiveEngine.none);
     await Future.delayed(const Duration(milliseconds: 300));
   }
 
-  Future<Map<String, dynamic>?> _verifyDnsIp(String ip,
-      {int timeoutMs = 1500}) async {
+  Future<Map<String, dynamic>?> _verifyDnsIp(String ip, {int timeoutMs = 1500, int port = 53}) async {
+    return verifyDnsIp(ip, timeoutMs: timeoutMs, port: port);
+  }
+
+  @visibleForTesting
+  static Future<Map<String, dynamic>?> verifyDnsIp(String ip, {int timeoutMs = 1500, int port = 53}) async {
     RawDatagramSocket? socket;
     try {
       final InternetAddress targetAddress = InternetAddress(ip.trim());
@@ -1389,7 +1401,7 @@ class _HomePageState extends State<HomePage> {
       ];
 
       final stopwatch = Stopwatch()..start();
-      socket.send(dnsQuery, targetAddress, 53);
+      socket.send(dnsQuery, targetAddress, port);
 
       final completer = Completer<Map<String, dynamic>?>();
       socket.listen((RawSocketEvent event) {
@@ -1651,11 +1663,11 @@ class _HomePageState extends State<HomePage> {
           .then((latency) => MapEntry(ip, latency ?? 9999));
     }).toList();
 
-    final List<MapEntry<String, int>> fastResults =
-        await Future.wait(fastTasks);
-    for (var result in fastResults) {
-      if (result.value < bestLatency && result.value < 1500) {
-        bestLatency = result.value;
+    final List<MapEntry<String, int>> fastResults = await Future.wait(fastTasks);
+    for (final result in fastResults) {
+      final latency = result.value;
+      if (latency < bestLatency && latency < 1500) {
+        bestLatency = latency;
         bestIP = result.key;
       }
     }
@@ -2155,7 +2167,9 @@ class _HomePageState extends State<HomePage> {
               }
             }
           }
-        } catch (_) {}
+        } catch (e) {
+          AppLogger.log("TOR", "Ошибка получения статуса Tor: $e", isError: true);
+        }
       });
 
       for (int i = 0; i < 180; i++) {
@@ -2495,6 +2509,14 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+
+  @visibleForTesting
+  void parseAndSaveConfig(String link, {bool updateUI = true}) {
+    _parseAndSaveConfig(link, updateUI: updateUI);
+  }
+
+  @visibleForTesting
+  String get fullConfigJson => _fullConfigJson;
 
   void _parseAndSaveConfig(String link, {bool updateUI = true}) {
     if (link.isEmpty) return;
@@ -3043,15 +3065,11 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _checkAndAutoSwitchLimit(
-      Map<String, String> currentAccount, int totalBytesSession) async {
-    final int previouslyUsedDatabase =
-        int.tryParse(currentAccount['used_bytes'] ?? '0') ?? 0;
-    final int currentRealtimeDailyUsage =
-        previouslyUsedDatabase + totalBytesSession;
+  @visibleForTesting
+  void checkAndAutoSwitchLimit(Map<String, String> currentAccount, int totalBytesSession) async {
     final String activeWorker = currentAccount['worker'] ?? '';
 
-    if (currentRealtimeDailyUsage >= _maxDailyBytes) {
+    if (DataLimitChecker.isLimitExhausted(currentAccount, totalBytesSession, maxDailyBytes: _maxDailyBytes)) {
       _locallyExhaustedWorkers.add(activeWorker);
       await _saveExhaustedWorkers();
       _showSnackBar(_t("limit_exhausted_banner"));
@@ -3066,6 +3084,10 @@ class _HomePageState extends State<HomePage> {
         _connectDashboard();
       }
     }
+  }
+
+  void _checkAndAutoSwitchLimit(Map<String, String> currentAccount, int totalBytesSession) {
+    checkAndAutoSwitchLimit(currentAccount, totalBytesSession);
   }
 
   Future<void> _loadExhaustedWorkers() async {
