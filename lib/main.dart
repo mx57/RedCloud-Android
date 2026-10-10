@@ -2539,18 +2539,12 @@ class HomePageState extends State<HomePage> {
 
 
   @visibleForTesting
-  void parseAndSaveConfigForTesting(String link, {bool updateUI = true}) {
+  void parseAndSaveConfig(String link, {bool updateUI = true}) {
     _parseAndSaveConfig(link, updateUI: updateUI);
   }
 
   @visibleForTesting
-  String get fullConfigJsonForTesting => _fullConfigJson;
-
-  @visibleForTesting
-  String get serverNameForTesting => _serverName;
-
-  @visibleForTesting
-  String get protocolTypeForTesting => _protocolType;
+  String get fullConfigJson => _fullConfigJson;
 
   void _parseAndSaveConfig(String link, {bool updateUI = true}) {
     if (link.isEmpty) return;
