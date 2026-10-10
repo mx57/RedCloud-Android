@@ -199,6 +199,18 @@ class HomePage extends StatefulWidget {
     required this.changeLang,
   });
 
+  static String formatBytes(int bytes, {bool isSpeed = false}) {
+    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
+    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
+    int i = 0;
+    double num = bytes.toDouble();
+    while (num >= 1024 && i < suffixes.length - 1) {
+      num /= 1024;
+      i++;
+    }
+    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
+  }
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -2256,17 +2268,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _formatBytes(int bytes, {bool isSpeed = false}) {
-    if (bytes <= 0) return isSpeed ? "0 B/s" : "0 B";
-    const List<String> suffixes = ["B", "KB", "MB", "GB", "TB"];
-    int i = 0;
-    double num = bytes.toDouble();
-    while (num >= 1024 && i < suffixes.length - 1) {
-      num /= 1024;
-      i++;
-    }
-    return "${num.toStringAsFixed(1)} ${suffixes[i]}${isSpeed ? '/s' : ''}";
-  }
 
   void _parseAndSaveConfig(String link, {bool updateUI = true}) {
     if (link.isEmpty) return;
@@ -5359,7 +5360,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        _formatBytes(isConnected ? value.downloadSpeed : 0, isSpeed: true),
+                        HomePage.formatBytes(isConnected ? value.downloadSpeed : 0, isSpeed: true),
                         style: const TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold,
@@ -5409,7 +5410,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        _formatBytes(isConnected ? value.uploadSpeed : 0, isSpeed: true),
+                        HomePage.formatBytes(isConnected ? value.uploadSpeed : 0, isSpeed: true),
                         style: const TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.bold,
