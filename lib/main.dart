@@ -1309,7 +1309,7 @@ class HomePageState extends State<HomePage> {
           await flutterV2ray.clearLogs();
         }
       } catch (e) {
-        AppLogger.log("V2RAY-LOGS-ERR", "Error getting v2ray logs: $e", isError: true);
+        AppLogger.log("V2RAY-LOG-ERR", "Error fetching V2Ray logs: $e", isError: true);
       }
 
       try {
@@ -1322,7 +1322,7 @@ class HomePageState extends State<HomePage> {
           await _torChannel.invokeMethod('clearNativeLogs');
         }
       } catch (e) {
-        AppLogger.log("TOR-LOGS-ERR", "Error getting native logs: $e", isError: true);
+        AppLogger.log("TOR-LOG-ERR", "Error fetching native Tor logs: $e", isError: true);
       }
     });
 
