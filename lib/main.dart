@@ -7337,6 +7337,22 @@ class ServersManagementScreen extends StatefulWidget {
     required this.currentServers,
   });
 
+  @visibleForTesting
+  static String buildVlessLink(Map<String, dynamic> s) {
+    final uuid = s['uuid'] ?? '';
+    final address = s['address'] ?? '';
+    final port = s['port'] ?? 443;
+    final security = s['security'] ?? 'tls';
+    final sni = s['sni'] ?? address;
+    final fp = s['fingerprint'] ?? 'chrome';
+    final alpn = Uri.encodeComponent(s['alpn'] ?? 'http/1.1');
+    final transport = s['transport'] ?? 'ws';
+    final wsHost = s['wsHost'] ?? address;
+    final wsPath = Uri.encodeComponent(s['wsPath'] ?? '/');
+    final name = Uri.encodeComponent(s['name'] ?? 'RedCloud_Server');
+    return "vless://$uuid@$address:$port?encryption=none&security=$security&sni=$sni&fp=$fp&alpn=$alpn&type=$transport&host=$wsHost&path=$wsPath#$name";
+  }
+
   @override
   State<ServersManagementScreen> createState() => _ServersManagementScreenState();
 }
@@ -7420,20 +7436,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
     await prefs.setStringList('saved_subscription_urls_v2', _subscriptionUrls);
   }
 
-  String _buildVlessLink(Map<String, dynamic> s) {
-    final uuid = s['uuid'] ?? '';
-    final address = s['address'] ?? '';
-    final port = s['port'] ?? 443;
-    final security = s['security'] ?? 'tls';
-    final sni = s['sni'] ?? address;
-    final fp = s['fingerprint'] ?? 'chrome';
-    final alpn = Uri.encodeComponent(s['alpn'] ?? 'http/1.1');
-    final transport = s['transport'] ?? 'ws';
-    final wsHost = s['wsHost'] ?? address;
-    final wsPath = Uri.encodeComponent(s['wsPath'] ?? '/');
-    final name = Uri.encodeComponent(s['name'] ?? 'RedCloud_Server');
-    return "vless://$uuid@$address:$port?encryption=none&security=$security&sni=$sni&fp=$fp&alpn=$alpn&type=$transport&host=$wsHost&path=$wsPath#$name";
-  }
+  String _buildVlessLink(Map<String, dynamic> s) => ServersManagementScreen.buildVlessLink(s);
 
   Future<int> _pingAddress(String address, int port) async {
     final stopwatch = Stopwatch()..start();
