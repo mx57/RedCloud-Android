@@ -778,11 +778,14 @@ class _HomePageState extends State<HomePage> {
                 parsed['pingMs'] = stopwatch.elapsedMilliseconds;
                 if (!completer.isCompleted) completer.complete(parsed);
                 return;
-              } catch (_) {}
+              } catch (e) {
+                AppLogger.log("TELEMETRY", "Failed to parse JSON response: $e", isError: true);
+              }
             }
           }
         }
-      }, onError: (_) {
+      }, onError: (e) {
+        AppLogger.log("TELEMETRY", "Socket error during SOCKS5 query: $e", isError: true);
         if (!completer.isCompleted) completer.complete(null);
       }, onDone: () {
         if (!completer.isCompleted) completer.complete(null);
@@ -793,10 +796,15 @@ class _HomePageState extends State<HomePage> {
       });
 
       return await completer.future;
-    } catch (_) {
+    } catch (e) {
+      AppLogger.log("TELEMETRY", "Error in _querySocks5Json: $e", isError: true);
       return null;
     } finally {
-      try { socket?.destroy(); } catch (_) {}
+      try {
+        socket?.destroy();
+      } catch (e) {
+        AppLogger.log("TELEMETRY", "Error destroying socket in _querySocks5Json: $e", isError: true);
+      }
     }
   }
 
