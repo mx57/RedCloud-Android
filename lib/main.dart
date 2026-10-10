@@ -8472,13 +8472,17 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   }
 }
 
-int compareServerPing(Map<String, dynamic> a, Map<String, dynamic> b) {
-  final pA = a['ping'] as int? ?? 0;
-  final pB = b['ping'] as int? ?? 0;
-  if (pA <= 0 && pB <= 0) return 0;
-  if (pA <= 0) return 1;
-  if (pB <= 0) return -1;
-  return pA.compareTo(pB);
+@visibleForTesting
+Future<int> pingAddress(String address, int port, {Duration timeout = const Duration(milliseconds: 1800)}) async {
+  final stopwatch = Stopwatch()..start();
+  try {
+    final socket = await Socket.connect(address, port, timeout: timeout);
+    stopwatch.stop();
+    socket.destroy();
+    return stopwatch.elapsedMilliseconds;
+  } catch (_) {
+    return -1; // تایم اوت یا فیلتر
+  }
 }
 
 // =========================================================================
@@ -8493,22 +8497,6 @@ class ServersManagementScreen extends StatefulWidget {
     required this.currentLang,
     required this.currentServers,
   });
-
-  @visibleForTesting
-  static String buildVlessLink(Map<String, dynamic> s) {
-    final uuid = s['uuid'] ?? '';
-    final address = s['address'] ?? '';
-    final port = s['port'] ?? 443;
-    final security = s['security'] ?? 'tls';
-    final sni = s['sni'] ?? address;
-    final fp = s['fingerprint'] ?? 'chrome';
-    final alpn = Uri.encodeComponent(s['alpn'] ?? 'http/1.1');
-    final transport = s['transport'] ?? 'ws';
-    final wsHost = s['wsHost'] ?? address;
-    final wsPath = Uri.encodeComponent(s['wsPath'] ?? '/');
-    final name = Uri.encodeComponent(s['name'] ?? 'RedCloud_Server');
-    return "vless://$uuid@$address:$port?encryption=none&security=$security&sni=$sni&fp=$fp&alpn=$alpn&type=$transport&host=$wsHost&path=$wsPath#$name";
-  }
 
   @override
   State<ServersManagementScreen> createState() => _ServersManagementScreenState();
@@ -8593,18 +8581,23 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
     await prefs.setStringList('saved_subscription_urls_v2', _subscriptionUrls);
   }
 
-  String _buildVlessLink(Map<String, dynamic> s) => ServersManagementScreen.buildVlessLink(s);
+  String _buildVlessLink(Map<String, dynamic> s) {
+    final uuid = s['uuid'] ?? '';
+    final address = s['address'] ?? '';
+    final port = s['port'] ?? 443;
+    final security = s['security'] ?? 'tls';
+    final sni = s['sni'] ?? address;
+    final fp = s['fingerprint'] ?? 'chrome';
+    final alpn = Uri.encodeComponent(s['alpn'] ?? 'http/1.1');
+    final transport = s['transport'] ?? 'ws';
+    final wsHost = s['wsHost'] ?? address;
+    final wsPath = Uri.encodeComponent(s['wsPath'] ?? '/');
+    final name = Uri.encodeComponent(s['name'] ?? 'RedCloud_Server');
+    return "vless://$uuid@$address:$port?encryption=none&security=$security&sni=$sni&fp=$fp&alpn=$alpn&type=$transport&host=$wsHost&path=$wsPath#$name";
+  }
 
   Future<int> _pingAddress(String address, int port) async {
-    final stopwatch = Stopwatch()..start();
-    try {
-      final socket = await Socket.connect(address, port, timeout: const Duration(milliseconds: 1800));
-      stopwatch.stop();
-      socket.destroy();
-      return stopwatch.elapsedMilliseconds;
-    } catch (_) {
-      return -1; // تایم اوت یا فیلتر
-    }
+    return pingAddress(address, port);
   }
 
   Future<void> _testSinglePing(int index) async {
@@ -8630,7 +8623,14 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
     await Future.wait(tasks);
 
     // مرتب‌سازی: کمترین پینگ در بالا، پینگ‌های منفی در انتها
-    _servers.sort(compareServerPing);
+    _servers.sort((a, b) {
+      final pA = a['ping'] as int;
+      final pB = b['ping'] as int;
+      if (pA <= 0 && pB <= 0) return 0;
+      if (pA <= 0) return 1;
+      if (pB <= 0) return -1;
+      return pA.compareTo(pB);
+    });
 
     setState(() => _isTestingPing = false);
     _saveServersData();
