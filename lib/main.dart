@@ -199,6 +199,20 @@ class HomePage extends StatefulWidget {
     required this.changeLang,
   });
 
+  @visibleForTesting
+  static String countryCodeToEmoji(String countryCode) {
+    if (countryCode.length != 2) return "🌐";
+    final String upper = countryCode.toUpperCase();
+    final int first = upper.codeUnitAt(0);
+    final int second = upper.codeUnitAt(1);
+    if (first < 0x41 || first > 0x5A || second < 0x41 || second > 0x5A) {
+      return "🌐";
+    }
+    final int firstLetter = first - 0x41 + 0x1F1E6;
+    final int secondLetter = second - 0x41 + 0x1F1E6;
+    return String.fromCharCode(firstLetter) + String.fromCharCode(secondLetter);
+  }
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -690,10 +704,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _countryCodeToEmoji(String countryCode) {
-    if (countryCode.length != 2) return "🌐";
-    final int firstLetter = countryCode.toUpperCase().codeUnitAt(0) - 0x41 + 0x1F1E6;
-    final int secondLetter = countryCode.toUpperCase().codeUnitAt(1) - 0x41 + 0x1F1E6;
-    return String.fromCharCode(firstLetter) + String.fromCharCode(secondLetter);
+    return HomePage.countryCodeToEmoji(countryCode);
   }
 
   void _startHeartbeat() {
@@ -711,7 +722,9 @@ class _HomePageState extends State<HomePage> {
 
         final socket = await Socket.connect('127.0.0.1', targetPort, timeout: const Duration(seconds: 2));
         socket.destroy();
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("HEARTBEAT-ERR", "Heartbeat check error: $e");
+      }
     });
   }
 
