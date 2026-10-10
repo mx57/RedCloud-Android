@@ -239,8 +239,530 @@ class HomePage extends StatefulWidget {
     required this.changeLang,
   });
 
-  @visibleForTesting
-  static Future<Map<String, dynamic>?> querySocks5Json(int socksPort, String targetHost, String path, {int timeoutMs = 4500}) async {
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
+  static const MethodChannel _aetherChannel = MethodChannel('com.redcloud.vpn/aether_channel');
+  static const MethodChannel _torChannel = MethodChannel('com.redcloud.vpn/tor_channel');
+  static const MethodChannel _lanChannel = MethodChannel('com.redcloud.vpn/lan_channel');
+
+  final ValueNotifier<V2RayStatus> v2rayStatus = ValueNotifier<V2RayStatus>(V2RayStatus());
+  
+  ActiveEngine _activeEngine = ActiveEngine.none;
+  bool _isTransitioning = false;
+  bool _bypassIran = true;
+  bool _isHybridMode = false;
+  String _hybridStatusText = "";
+
+  Timer? _logTimer;
+  Timer? _reportTimer;
+  Timer? _torProgressTimer;
+  Timer? _bannerTimer;
+  Timer? _heartbeatTimer;
+  int _currentTabIndex = 0;
+
+  String? _publicIp;
+  String? _ipCountry;
+  String? _ipCountryCode;
+  String? _ipFlagEmoji;
+  int? _realPingMs;
+  bool _isTestingIp = false;
+  
+  late final V2ray flutterV2ray = V2ray(
+    onStatusChanged: (status) {
+      v2rayStatus.value = status;
+      if (status.state == "CONNECTED" && _activeEngine != ActiveEngine.none) {
+        if (_publicIp == null && !_isTestingIp) {
+          Timer(const Duration(milliseconds: 1500), () {
+            if (mounted && _activeEngine != ActiveEngine.none && !_isTestingIp) {
+              _fetchPublicIpAndPing();
+            }
+          });
+        }
+      }
+
+      if (_activeEngine == ActiveEngine.dashboard && status.state == "CONNECTED" && _selectedAccountIndex >= 0) {
+        _checkAndAutoSwitchLimit(
+          _fetchedAccounts[_selectedAccountIndex], 
+          status.download + status.upload,
+        );
+      }
+    },
+  );
+
+  final TextEditingController _configController = TextEditingController();
+  final TextEditingController _customBridgeController = TextEditingController();
+  
+  List<Map<String, String>> _fetchedAccounts = [];
+  int _selectedAccountIndex = -1;
+  bool _isLoadingAccounts = false;
+  bool _isScanningIPs = false;
+  bool _serversUpdatingMode = false;
+  
+  String _fastestIP = "104.18.0.14";
+  int _bestPing = 0;
+
+  String _serverName = "";
+  String _protocolType = "";
+  String _fullConfigJson = "";
+  String _remark = "RedCloud Server";
+
+  String? _bannerMessage;
+  Color _bannerColor = const Color(0xFF3B82F6);
+  IconData _bannerIcon = Icons.info_outline_rounded;
+
+  String _selectedAetherMode = "auto";
+  String _selectedTorMode = "aether_masque";
+  int _torBootstrapProgress = 0;
+
+  String _atcAccountName = "";
+  int _atcRemainingDays = 30;
+
+  Future<void> _fetchAtcInfo() async {
+    try {
+      final dynamic info = await _aetherChannel.invokeMethod('getAtcAccountInfo');
+      if (info is Map && mounted) {
+        setState(() {
+          _atcAccountName = info['account']?.toString() ?? "";
+          _atcRemainingDays = (info['remainingDays'] as num?)?.toInt() ?? 30;
+        });
+      }
+    } catch (e) {
+      AppLogger.log("ATC", "Failed to fetch ATC account info: $e");
+    }
+  }
+  String _torStepStatus = "";
+  int _torCurrentStep = 0;
+
+  bool _isPsiphonHybrid = true;
+  bool _isPsiphonCdnFronting = false;
+  String _selectedPsiphonCountry = "CA";
+  final List<Map<String, String>> _psiphonCountries = [
+    {"code": "CA", "name": "Канада 🇨🇦 / Canada"},
+    {"code": "DE", "name": "Германия 🇩🇪 / Germany"},
+    {"code": "US", "name": "США 🇺🇸 / USA"},
+    {"code": "GB", "name": "Великобритания 🇬🇧 / UK"},
+    {"code": "NL", "name": "Нидерланды 🇳🇱 / Netherlands"},
+    {"code": "FR", "name": "Франция 🇫🇷 / France"},
+    {"code": "AUTO", "name": "Автовыбор / Auto"},
+  ];
+
+  int _lastSentDownload = 0;
+  int _lastSentUpload = 0;
+  final int _maxDailyBytes = 5 * 1024 * 1024 * 1024;
+  final Set<String> _locallyExhaustedWorkers = {};
+
+  final List<String> _defaultCloudflareIPs = [
+    "162.159.192.1", "162.159.193.1", "162.159.195.1", "188.114.96.1", "188.114.97.1",
+    "104.16.132.1", "104.16.133.1", "172.67.182.1", "104.19.150.1", "104.21.20.1",
+    "104.22.10.1", "104.17.15.1", "104.18.22.1", "141.101.64.1", "198.41.128.1",
+    "104.16.1.1", "104.17.2.2", "104.18.3.3", "104.19.4.4", "104.20.5.5",
+    "104.21.6.6", "104.22.7.7", "104.24.8.8", "104.25.9.9", "104.26.10.10"
+  ];
+
+  List<String> _activeVerifiedDnsList = ["1.1.1.1", "1.0.0.1", "8.8.8.8"];
+
+  final Map<String, Map<String, String>> _localizedValues = {
+    "fa": {
+      "app_title": "RedCloud VPN",
+      "tab_dashboard": "داشبورد",
+      "tab_aether": "اَتر (Aether)",
+      "tab_tor": "تور (Tor)",
+      "tab_settings": "تنظیمات",
+      "tab_privacy": "حریم خصوصی",
+      "tab_contact": "ارتباط و حمایت",
+      "connected": "متصل",
+      "connecting": "در حال اتصال",
+      "disconnected": "قطع اتصال",
+      "scan_ip": "اسکن لایه ۷ کلودفلر",
+      "shared_acc": "اکانت‌های اشتراکی هوشمند",
+      "acc_fetch_err": "خطا در دریافت اکانت‌ها؛ لطفاً همگام‌سازی را بزنید.",
+      "ping_info": "آی‌پی سالم لایه ۷: ",
+      "ms": "میلی‌ثانیه",
+      "down_speed": "سرعت دانلود",
+      "up_speed": "سرعت آپلود",
+      "total_down": "کل دانلود",
+      "total_up": "کل آپلود",
+      "conn_time": "زمان اتصال: ",
+      "no_config_err": "لطفاً ابتدا یک کانفیگ معتبر وارد کنید",
+      "connecting_msg": "در حال بررسی و اتصال...",
+      "os_perm_err": "لطفاً تاییدیه کادر سیستم‌عامل را بدهید و مجدداً دکمه اتصال را بزنید.",
+      "acc_sync_ok": "لیست اکانت‌های فعال با موفقیت دریافت و فیلتر شدند.",
+      "acc_sync_err": "خطا در ارتباط با سرور؛ اینترنت خود را چک کنید.",
+      "clipboard_empty": "حافظه موقت سیستم شما خالی است",
+      "config_saved": "کانفیگ با موفقیت ثبت شد",
+      "config_err": "کانفیگ نامعتبر است یا امکان تبدیل خودکار آن وجود ندارد.",
+      "manual_input_title": "ورود دستی کانفیگ تکی",
+      "paste_btn": "کپی خودکار از کلیپ‌بورد",
+      "save_btn": "تایید و ذخیره",
+      "theme_setting": "تم برنامه",
+      "theme_dark": "حالت تاریک (Dark Mode)",
+      "theme_light": "حالت روشن (Light Mode)",
+      "lang_setting": "زبان برنامه (Language)",
+      "privacy_title": "بیانیه حریم خصوصی",
+      "privacy_text": "ما به حریم خصوصی شما احترام می‌گذاریم. اپلیکیشن RedCloud VPN هیچ‌گونه اطلاعات، لاگ یا تاریخچه ترافیکی از فعالیت‌های اینترنتی کاربران خود ذخیره یا رصد نمی‌کند. تمامی ارتباطات شما از طریق پروتکل‌های امن و کلیدهای رمزنگاری پیشرفته به صورت کاملاً کدگذاری‌شده عبور داده می‌شود.",
+      "contact_title": "ارتباط با ما و حمایت مالی",
+      "contact_telegram": "کانال تلگرام ما",
+      "contact_donate": "حمایت مالی (Donate)",
+      "copied_msg": "در حافظه موقت کپی شد!",
+      "server_updating_banner": "سرورها در حال آپدیت هستند. از شکیبایی شما متشکریم.",
+      "limit_exhausted_banner": "مصرف روزانه اکانت به پایان رسید! در حال تعویض خودکار...",
+      
+      "hybrid_mode_label": "هیبریدی (اتر + کانفیگ)",
+      "hybrid_starting": "در حال آزمایش و اتصال هوشمند موتور اَتر...",
+      "hybrid_failed": "خطا در اتصال اَتر هوشمند؛ پروتکل‌ها پاسخگو نبودند.",
+      "banner_dns_rescue": "در حال رفع مسمومیت دی‌ان‌اس و گزینش امن‌ترین سرورها...",
+      "banner_cf_fallback": "آی‌پی‌های پیش‌فرض پاسخگو نبودند؛ در حال استخراج و اسکن از دیتابیس بزرگ رنج‌های کلودفلر...",
+
+      "aether_title": "هسته ضدسانسور اَتر (WARP Engine)",
+      "aether_subtitle": "تونل کل دستگاه با پروتکل‌های پیشرفته کلودفلر",
+      "aether_mode_select": "حالت پروتکل (Protocol Mode)",
+      "mode_auto_title": "(پیشنهادی - Auto Failover) انتخاب خودکار هوشمند",
+      "mode_auto_desc": "تست خودکار تمام مسیرها و نویزها و اتصال به پایدارترین حالت",
+      "mode_masque_h2_title": "MASQUE (HTTP/2 - TCP)",
+      "mode_masque_h2_desc": "دارای فرگمنت TLS جهت عبور تضمینی از فیلترینگ شدید",
+      "mode_masque_title": "MASQUE (HTTP/3 - QUIC)",
+      "mode_masque_desc": "پرسرعت‌ترین حالت مبتنی بر پروتکل وب QUIC و UDP",
+      "mode_gool_title": "Gool (WARP in WARP)",
+      "mode_gool_desc": "دو لایه وایرگارد تودرتو برای بالاترین ضریب عبور",
+      "mode_wireguard_title": "WireGuard (WARP)",
+      "mode_wireguard_desc": "پروتکل وایرگارد مستقیم کلودفلر با مصرف بهینه باتری",
+      "aether_launching": "در حال راه‌اندازی و آزمایش خودکار پروتکل‌های ضدسانسور...",
+      "aether_connected_banner": "تونل اَتر فعال است (کل گوشی تونل شد)",
+      "aether_start_err": "خطا در راه‌اندازی هسته اَتر؛ لطفاً مجدداً تلاش کنید.",
+
+      "tor_title": "شبکه پیازی تور (Tor Network)",
+      "tor_subtitle": "ناشناسی کامل و تونل چندلایه‌ای (Tor over MASQUE)",
+      "tor_mode_select": "نوع مسیر اتصال به تور",
+      "tor_mode_aether_masque_title": "(پیشنهادی - ضد فیلتر قطعی) اَتر مسک + تور",
+      "tor_mode_aether_masque_desc": "عبور هوشمند ترافیک تور از بستر TLS Fragment اَتر",
+      "tor_mode_aether_quic_title": "اَتر کوئیک + تور (MASQUE QUIC)",
+      "tor_mode_aether_quic_desc": "ترکیب سریع‌ترین لایه پروتکل QUIC کلودفلر با مدارهای پیازی تور",
+      "tor_mode_direct_title": "اتصال مستقیم (Direct Tor Relay)",
+      "tor_mode_direct_desc": "اتصال مستقیم به رله‌های تور بدون واسطه",
+      "tor_mode_snowflake_title": "پل اسنوفلیک (Snowflake Bridge)",
+      "tor_mode_snowflake_desc": "دور زدن فیلترینگ از طریق پروکسی‌های موقت WebRTC",
+      "tor_mode_custom_title": "پل سفارشی (Custom Bridges)",
+      "tor_mode_custom_desc": "ورود خطوط پل‌های اختصاصی شما",
+      "tor_connected_banner": "شبکه تور فعال است (کل دستگاه ناشناس و تونل شد)",
+      "tor_start_err": "خطا در برقراری ارتباط با شبکه تور؛ اتصال اینترنت را چک کنید.",
+      "tor_custom_bridge_hint": "Enter bridge lines here...",
+      "tor_building_circuits": "در حال ساخت مدارهای امن: ",
+
+      "tor_step_cleanup": "آزادسازی پورت‌ها و ریست هسته‌ها...",
+      "tor_step_aether_start": "راه‌اندازی پل اَتر مسک...",
+      "tor_step_aether_test": "تست گذردهی واقعی اینترنت اَتر...",
+      "tor_step_tor_start": "راه‌اندازی مدارهای پیازی تور...",
+      "tor_step_vpn_start": "برقراری تونل امن کل گوشی...",
+      "aether_egress_err": "خطا: پل اَتر متصل شد اما امکان رد کردن ترافیک را ندارد. اینترنت را بررسی کنید.",
+      "aether_port_timeout": "تایم‌اوت پورت اَتر (۱۸۱۹)",
+      "tor_socks_timeout": "تایم‌اوت شبکه تور (پورت ۹۰۵۰)",
+      "tor_layer_aether": "پل اَتر مسک (MASQUE)",
+      "tor_layer_tor": "مدارهای پیازی تور (Tor)",
+      "tor_layer_vpn": "تونل کل دستگاه (V2Ray TUN)",
+
+      "logs_title": "گزارشات و لاگ‌های سیستم",
+      "logs_subtitle": "رویدادهای زنده، وضعیت هسته‌ها و عیب‌یابی خطاها",
+      "logs_view_btn": "مشاهده و مدیریت لاگ‌ها",
+      "logs_empty": "هنوز هیچ لاگی در سیستم ثبت نشده است.",
+      "logs_copied": "تمام لاگ‌های سیستم در کلیپ‌بورد کپی شد!",
+      "logs_cleared": "تمامی لاگ‌ها با موفقیت پاک‌سازی شدند.",
+      "logs_copy_all": "کپی تمام لاگ‌ها",
+      "logs_clear_all": "پاک‌سازی لاگ‌ها",
+      "logs_search_hint": "جستجو در میان لاگ‌ها...",
+
+      "battery_opt_title": "بهینه‌سازی باتری و پایداری در پس‌زمینه",
+      "battery_opt_desc": "جهت جلوگیری از قطع شدن اتصال پس از چند دقیقه در پس‌زمینه، بهینه‌سازی باتری را برای برنامه خاموش کنید.",
+      "battery_opt_btn": "تنظیم عدم محدودیت باتری (Unrestricted)",
+
+      "bypass_iran_title": "بایپس سایت‌های ایرانی (Bypass Iran)",
+      "bypass_iran_desc": "عبور مستقیم سایت‌های داخلی (.ir)، بانکی و دولتی بدون فیلترشکن",
+
+      "testing_ip_info": "در حال دریافت مشخصات سرور خروجی...",
+      "live_ping_label": "پینگ زنده",
+      "public_ip_label": "آی‌پی سرور",
+    },
+    "ru": {
+      "app_title": "RedCloud VPN",
+      "tab_dashboard": "Панель",
+      "tab_aether": "Aether",
+      "tab_tor": "Tor",
+      "tab_settings": "Настройки",
+      "tab_privacy": "Конфиденциальность",
+      "tab_contact": "Связь и Поддержка",
+      "connected": "Подключено",
+      "connecting": "Подключение...",
+      "disconnected": "Отключено",
+      "scan_ip": "Сканирование L7 Cloudflare",
+      "shared_acc": "Умные общие аккаунты",
+      "acc_fetch_err": "Ошибка получения аккаунтов. Нажмите синхронизацию.",
+      "ping_info": "Чистый IP L7: ",
+      "ms": "мс",
+      "down_speed": "Скорость загрузки",
+      "up_speed": "Скорость отдачи",
+      "total_down": "Всего скачано",
+      "total_up": "Всего отдано",
+      "conn_time": "Время подключения: ",
+      "no_config_err": "Сначала введите валидный конфиг",
+      "connecting_msg": "Проверка и подключение...",
+      "os_perm_err": "Предоставьте разрешение VPN в системе и повторите попытку.",
+      "acc_sync_ok": "Список активных аккаунтов успешно получен.",
+      "acc_sync_err": "Ошибка подключения к серверу. Проверьте интернет.",
+      "clipboard_empty": "Буфер обмена пуст",
+      "config_saved": "Конфиг успешно сохранен",
+      "config_err": "Недействительный конфиг или ошибка разбора.",
+      "manual_input_title": "Ручной ввод конфига",
+      "paste_btn": "Вставить из буфера обмена",
+      "save_btn": "Сохранить",
+      "theme_setting": "Тема приложения",
+      "theme_dark": "Тёмная тема (Dark Mode)",
+      "theme_light": "Светлая тема (Light Mode)",
+      "lang_setting": "Язык приложения (Language)",
+      "privacy_title": "Политика конфиденциальности",
+      "privacy_text": "Мы уважаем вашу конфиденциальность. Приложение RedCloud VPN не сохраняет, не записывает и не отслеживает историю трафика или интернет-активность пользователей. Все ваши соединения надежно шифруются с использованием современных криптографических протоколов.",
+      "contact_title": "Связь и поддержка проекта",
+      "contact_telegram": "Наш Telegram-канал",
+      "contact_donate": "Поддержать проект (Donate)",
+      "copied_msg": "Скопировано в буфер обмена!",
+      "server_updating_banner": "Серверы обновляются. Спасибо за терпение.",
+      "limit_exhausted_banner": "Дневной лимит аккаунта исчерпан! Автоматическое переключение...",
+
+      "hybrid_mode_label": "Гибридный (Aether + Конфиг)",
+      "hybrid_starting": "Тестирование и подключение движка Aether...",
+      "hybrid_failed": "Ошибка подключения Aether. Протоколы не ответили.",
+      "banner_dns_rescue": "Устранение подмены DNS и подбор безопасных серверов...",
+      "banner_cf_fallback": "Стандартные IP не отвечают; сканирование диапазонов Cloudflare...",
+
+      "aether_title": "Движок обхода блокировок Aether (WARP)",
+      "aether_subtitle": "Туннелирование всего устройства через Cloudflare WARP",
+      "aether_mode_select": "Режим протокола (Protocol Mode)",
+      "mode_auto_title": "(Рекомендуется - Auto Failover) Умный автовыбор",
+      "mode_auto_desc": "Автоматическая проверка всех путей и зашумления для устойчивого соединения",
+      "mode_masque_h2_title": "MASQUE (HTTP/2 - TCP)",
+      "mode_masque_h2_desc": "TLS Фрагментация для обхода жестких блокировок ТСПУ/DPI",
+      "mode_masque_title": "MASQUE (HTTP/3 - QUIC)",
+      "mode_masque_desc": "Сверхбыстрый режим на базе протоколов QUIC и UDP",
+      "mode_gool_title": "Gool (WARP in WARP)",
+      "mode_gool_desc": "Двухуровневый WireGuard для обхода глубоких блокировок",
+      "mode_wireguard_title": "WireGuard (WARP)",
+      "mode_wireguard_desc": "Прямой протокол WireGuard с экономией заряда батареи",
+      "aether_launching": "Запуск ядра Aether и проверка шлюза...",
+      "aether_connected_banner": "Aether активен (Весь трафик затуннелирован)",
+      "aether_start_err": "Не удалось запустить ядро Aether. Попробуйте снова.",
+
+      "tor_title": "Луковая сеть Tor (Tor Network)",
+      "tor_subtitle": "Полная анонимность и многослойный туннель (Tor over MASQUE)",
+      "tor_mode_select": "Режим маршрутизации Tor",
+      "tor_mode_aether_masque_title": "(Рекомендуется) Aether MASQUE + Tor",
+      "tor_mode_aether_masque_desc": "Маршрутизация Tor через TLS Fragment Aether для 100% обхода ТСПУ",
+      "tor_mode_aether_quic_title": "Aether QUIC + Tor (MASQUE H3)",
+      "tor_mode_aether_quic_desc": "Сочетание быстрой прослойки QUIC Cloudflare и луковой сети Tor",
+      "tor_mode_direct_title": "Прямое подключение (Direct Tor Relay)",
+      "tor_mode_direct_desc": "Прямое подключение к узлам Tor без промежуточного моста",
+      "tor_mode_snowflake_title": "Мост Snowflake (Snowflake Bridge)",
+      "tor_mode_snowflake_desc": "Обход DPI с помощью временных WebRTC-прокси",
+      "tor_mode_custom_title": "Персональные мосты (Custom Bridges)",
+      "tor_mode_custom_desc": "Ручной ввод ваших персональных строк мостов Tor",
+      "tor_connected_banner": "Сеть Tor активна (Устройство анонимизировано)",
+      "tor_start_err": "Не удалось подключиться к сети Tor. Проверьте интернет.",
+      "tor_custom_bridge_hint": "Введите строки мостов здесь...",
+      "tor_building_circuits": "Построение защищенных цепочек: ",
+
+      "tor_step_cleanup": "Освобождение портов и сброс ядер...",
+      "tor_step_aether_start": "Запуск моста Aether MASQUE...",
+      "tor_step_aether_test": "Проверка выхода в интернет Aether...",
+      "tor_step_tor_start": "Запуск цепочек Tor...",
+      "tor_step_vpn_start": "Установка туннеля VPN для всего устройства...",
+      "aether_egress_err": "Ошибка: Мост Aether подключен, но не пропускает трафик. Проверьте сеть.",
+      "aether_port_timeout": "Тайм-аут порта Aether (1819)",
+      "tor_socks_timeout": "Тайм-аут сети Tor (порт 9050)",
+      "tor_layer_aether": "Мост Aether MASQUE",
+      "tor_layer_tor": "Луковые цепочки Tor",
+      "tor_layer_vpn": "Туннель всего устройства",
+
+      "logs_title": "Системные логи и диагностика",
+      "logs_subtitle": "Живые события, статус ядер и отладка ошибок",
+      "logs_view_btn": "Просмотр системных логов",
+      "logs_empty": "Записей в логах пока нет.",
+      "logs_copied": "Все логи скопированы в буфер обмена!",
+      "logs_cleared": "Логи успешно очищены.",
+      "logs_copy_all": "Копировать все логи",
+      "logs_clear_all": "Очистить логи",
+      "logs_search_hint": "Поиск по логам...",
+
+      "battery_opt_title": "Оптимизация батареи и работа в фоновом режиме",
+      "battery_opt_desc": "Отключите ограничение батареи для приложения, чтобы Android не закрывал соединение в фоновом режиме.",
+      "battery_opt_btn": "Снять ограничения батареи (Unrestricted)",
+
+      "bypass_iran_title": "Обход сайтов РФ (Bypass Russia)",
+      "bypass_iran_desc": "Прямой доступ для сайтов .ru, .рф, банков, Госуслуг и сервисов без VPN",
+
+      "testing_ip_info": "Получение данных внешнего сервера...",
+      "live_ping_label": "Живой Пинг",
+      "public_ip_label": "IP Сервера",
+    },
+    "en": {
+      "app_title": "RedCloud VPN",
+      "tab_dashboard": "Dashboard",
+      "tab_aether": "Aether",
+      "tab_tor": "Tor",
+      "tab_settings": "Settings",
+      "tab_privacy": "Privacy",
+      "tab_contact": "Contact & Donate",
+      "connected": "Connected",
+      "connecting": "Connecting",
+      "disconnected": "Disconnected",
+      "scan_ip": "L7 Cloudflare Scan",
+      "shared_acc": "Smart Shared Accounts",
+      "acc_fetch_err": "Error fetching accounts; please sync.",
+      "ping_info": "Live L7 Cloudflare IP: ",
+      "ms": "ms",
+      "down_speed": "Download Speed",
+      "up_speed": "Upload Speed",
+      "total_down": "Total Download",
+      "total_up": "Total Upload",
+      "conn_time": "Connection Time: ",
+      "no_config_err": "Please enter a valid config first",
+      "connecting_msg": "Probing & connecting...",
+      "os_perm_err": "Please approve the system VPN dialog and press connect again.",
+      "acc_sync_ok": "Active accounts fetched successfully.",
+      "acc_sync_err": "Failed to connect to server. Check your internet.",
+      "clipboard_empty": "Your clipboard is empty",
+      "config_saved": "Config registered successfully",
+      "config_err": "Invalid config or parsing failed.",
+      "manual_input_title": "Manual Config Entry",
+      "paste_btn": "Auto Paste from Clipboard",
+      "save_btn": "Confirm & Save",
+      "theme_setting": "App Theme",
+      "theme_dark": "Dark Mode",
+      "theme_light": "Light Mode",
+      "lang_setting": "App Language",
+      "privacy_title": "Privacy Policy",
+      "privacy_text": "We respect your privacy. RedCloud VPN does not store, log, or monitor any traffic history of its users' online activities. All of your connections are securely encrypted using advanced cryptographic protocols.",
+      "contact_title": "Connect & Support Us",
+      "contact_telegram": "Telegram Channel",
+      "contact_donate": "Donate (Crypto)",
+      "copied_msg": "Copied to clipboard!",
+      "server_updating_banner": "Servers are currently updating. Thank you for your patience.",
+      "limit_exhausted_banner": "Daily usage limit reached! Auto-switching...",
+
+      "banner_dns_rescue": "Resolving DNS poisoning & selecting cleanest resolvers...",
+      "banner_cf_fallback": "Default IPs unviable; deep scanning large Cloudflare CIDR pools...",
+
+      "aether_title": "Aether Anti-Censorship Engine",
+      "aether_subtitle": "Full-Device Tunnel Powered by Cloudflare WARP",
+      "aether_mode_select": "Protocol Mode",
+      "mode_auto_title": "(Recommended - Auto Failover) Smart Auto-Select",
+      "mode_auto_desc": "Auto probes all paths and noises to pick the most stable tunnel",
+      "mode_masque_h2_title": "MASQUE (HTTP/2 - TCP)",
+      "mode_masque_h2_desc": "TLS Fragmentation to bypass heavy censorship",
+      "mode_masque_title": "MASQUE (HTTP/3 - QUIC)",
+      "mode_masque_desc": "Ultra-fast mode over QUIC & UDP protocol",
+      "mode_gool_title": "Gool (WARP in WARP)",
+      "mode_gool_desc": "Nested dual WireGuard for deepest censorship bypass",
+      "mode_wireguard_title": "WireGuard (WARP)",
+      "mode_wireguard_desc": "Native Cloudflare WireGuard with low battery drain",
+      "aether_launching": "Starting Aether core & scanning gateway...",
+      "aether_connected_banner": "Aether Active (Full Device Tunneled)",
+      "aether_start_err": "Failed to start Aether core. Please try again.",
+
+      "tor_title": "Tor Onion Network",
+      "tor_subtitle": "Full Anonymity & Multi-Layered Tunnel (Tor over MASQUE)",
+      "tor_mode_select": "Tor Routing Mode",
+      "tor_mode_aether_masque_title": "(Top Recommended) Aether MASQUE + Tor",
+      "tor_mode_aether_masque_desc": "Tunnel Tor through Aether TLS Fragment to guarantee 100% censorship bypass",
+      "tor_mode_aether_quic_title": "Aether QUIC + Tor (MASQUE H3)",
+      "tor_mode_aether_quic_desc": "Ultra-fast Cloudflare QUIC layer paired with Onion routing",
+      "tor_mode_direct_title": "Direct Connection (Standard Relays)",
+      "tor_mode_direct_desc": "Direct connection to Tor relays without upstream bridge",
+      "tor_mode_snowflake_title": "Snowflake Bridge",
+      "tor_mode_snowflake_desc": "Bypass DPI using temporary WebRTC proxies",
+      "tor_mode_custom_title": "Custom Bridges",
+      "tor_mode_custom_desc": "Manually enter personal Tor bridge lines",
+      "tor_connected_banner": "Tor Active (Full Device Tunneled)",
+      "tor_start_err": "Failed to connect to Tor network. Check your internet.",
+      "tor_custom_bridge_hint": "Enter bridge lines here...",
+      "tor_building_circuits": "Building Secure Circuits: ",
+
+      "tor_step_cleanup": "Cleaning ports & resetting cores...",
+      "tor_step_aether_start": "Starting Aether MASQUE bridge...",
+      "tor_step_aether_test": "Testing Aether real internet egress...",
+      "tor_step_tor_start": "Starting Tor Onion circuits...",
+      "tor_step_vpn_start": "Establishing full device VPN tunnel...",
+      "aether_egress_err": "Error: Aether connected but failed to pass traffic. Check your connection.",
+      "aether_port_timeout": "Aether port timeout (1819)",
+      "tor_socks_timeout": "Tor SOCKS timeout (9050)",
+      "tor_layer_aether": "Aether MASQUE Bridge",
+      "tor_layer_tor": "Tor Onion Circuits",
+      "tor_layer_vpn": "Full Device Tunnel",
+
+      "logs_title": "System Logs & Diagnostics",
+      "logs_subtitle": "Live events, debug traces & error logs",
+      "logs_view_btn": "View System Logs",
+      "logs_empty": "No logs recorded yet.",
+      "logs_copied": "All logs copied to clipboard!",
+      "logs_cleared": "Logs cleared successfully.",
+      "logs_copy_all": "Copy All Logs",
+      "logs_clear_all": "Clear Logs",
+      "logs_search_hint": "Search inside logs...",
+
+      "battery_opt_title": "Battery Optimization & Background Stability",
+      "battery_opt_desc": "Disable battery optimization for this app to prevent Android from closing the connection after 10 minutes in the background.",
+      "battery_opt_btn": "Set Battery to Unrestricted",
+
+      "bypass_iran_title": "Bypass Domestic Sites (Bypass Russia)",
+      "bypass_iran_desc": "Direct routing for domestic domains (.ru, .рф), banking and govt traffic without VPN",
+
+      "testing_ip_info": "Discovering exit server info...",
+      "live_ping_label": "Live Ping",
+      "public_ip_label": "Server IP",
+    }
+  };
+
+  String _t(String key) {
+    return _localizedValues[widget.currentLang]?[key] ?? _localizedValues["en"]?[key] ?? key;
+  }
+
+  String _countryCodeToEmoji(String countryCode) {
+    if (countryCode.length != 2) return "🌐";
+    final int firstLetter = countryCode.toUpperCase().codeUnitAt(0) - 0x41 + 0x1F1E6;
+    final int secondLetter = countryCode.toUpperCase().codeUnitAt(1) - 0x41 + 0x1F1E6;
+    return String.fromCharCode(firstLetter) + String.fromCharCode(secondLetter);
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 25), (timer) async {
+      if (_activeEngine == ActiveEngine.none) {
+        timer.cancel();
+        return;
+      }
+      try {
+        int targetPort = 10808;
+        if (_activeEngine == ActiveEngine.aether) targetPort = 1819;
+        if (_activeEngine == ActiveEngine.tor) targetPort = 9050;
+        if (_activeEngine == ActiveEngine.psiphon) targetPort = 9081;
+
+        final socket = await Socket.connect('127.0.0.1', targetPort, timeout: const Duration(seconds: 2));
+        socket.destroy();
+      } catch (_) {}
+    });
+  }
+
+  void _stopHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+  }
+
+  Future<Map<String, dynamic>?> _querySocks5Json(int socksPort, String targetHost, String path, {int timeoutMs = 4500}) async {
     final stopwatch = Stopwatch()..start();
     Socket? socket;
     try {
