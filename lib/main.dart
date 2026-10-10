@@ -7324,6 +7324,19 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   }
 }
 
+@visibleForTesting
+Future<int> pingAddress(String address, int port, {Duration timeout = const Duration(milliseconds: 1800)}) async {
+  final stopwatch = Stopwatch()..start();
+  try {
+    final socket = await Socket.connect(address, port, timeout: timeout);
+    stopwatch.stop();
+    socket.destroy();
+    return stopwatch.elapsedMilliseconds;
+  } catch (_) {
+    return -1; // تایم اوت یا فیلتر
+  }
+}
+
 // =========================================================================
 // صفحه مدیریت سرورها و سابسکریپشن (Servers & Subscription Management)
 // =========================================================================
@@ -7436,15 +7449,7 @@ class _ServersManagementScreenState extends State<ServersManagementScreen> {
   }
 
   Future<int> _pingAddress(String address, int port) async {
-    final stopwatch = Stopwatch()..start();
-    try {
-      final socket = await Socket.connect(address, port, timeout: const Duration(milliseconds: 1800));
-      stopwatch.stop();
-      socket.destroy();
-      return stopwatch.elapsedMilliseconds;
-    } catch (_) {
-      return -1; // تایم اوت یا فیلتر
-    }
+    return pingAddress(address, port);
   }
 
   Future<void> _testSinglePing(int index) async {
