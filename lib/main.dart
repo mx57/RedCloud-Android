@@ -295,7 +295,9 @@ class _HomePageState extends State<HomePage> {
           _atcRemainingDays = (info['remainingDays'] as num?)?.toInt() ?? 30;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ATC", "Failed to fetch ATC account info: $e");
+    }
   }
   String _torStepStatus = "";
   int _torCurrentStep = 0;
