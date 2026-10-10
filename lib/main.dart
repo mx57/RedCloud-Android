@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use, avoid_print
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -19,6 +19,21 @@ const String usdtBnbAddress = "0xDeda28Aa73Ec089A77B3fC616E0011a8fce12900";
 const String appPackageName = "com.redcloud.vpn.redcloud_android";
 
 enum ActiveEngine { none, dashboard, aether, tor, psiphon }
+
+class DataLimitChecker {
+  static const int defaultMaxDailyBytes = 5 * 1024 * 1024 * 1024; // 5 GB
+
+  static int calculateTotalUsage(Map<String, String>? currentAccount, int totalBytesSession) {
+    if (currentAccount == null) return totalBytesSession;
+    final int previouslyUsedDatabase = int.tryParse(currentAccount['used_bytes'] ?? '0') ?? 0;
+    return previouslyUsedDatabase + totalBytesSession;
+  }
+
+  static bool isLimitExhausted(Map<String, String>? currentAccount, int totalBytesSession, {int maxDailyBytes = defaultMaxDailyBytes}) {
+    final int currentRealtimeDailyUsage = calculateTotalUsage(currentAccount, totalBytesSession);
+    return currentRealtimeDailyUsage >= maxDailyBytes;
+  }
+}
 
 class LogEntry {
   final DateTime time;
@@ -56,7 +71,7 @@ class AppLogger {
     );
 
     if (kDebugMode) {
-      print(entry.format());
+      debugPrint(entry.format());
     }
 
     if (_logs.length >= maxLogs) {
@@ -164,7 +179,9 @@ class _MyAppState extends State<MyApp> {
     try {
       final prefs = AppPreferences.instance;
       await prefs.setBool('saved_dark_mode', _isDarkMode);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("THEME", "Ошибка сохранения темы: $e", isError: true);
+    }
   }
 
   void _changeLang(String lang) async {
@@ -175,7 +192,9 @@ class _MyAppState extends State<MyApp> {
       final prefs = AppPreferences.instance;
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("LANG", "Ошибка сохранения языка: $e", isError: true);
+    }
   }
 
   @override
@@ -302,10 +321,10 @@ class HomePage extends StatefulWidget {
   }
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   String _l(String fa, String ru, String en) {
     if (widget.currentLang == "fa") return fa;
     if (widget.currentLang == "ru") return ru;
@@ -1167,7 +1186,9 @@ class _HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SHIELD", "Ошибка сохранения защиты WebRTC: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1183,7 +1204,9 @@ class _HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("HYBRID", "Ошибка сохранения гибридного режима: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1199,7 +1222,9 @@ class _HomePageState extends State<HomePage> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ROUTING", "Ошибка сохранения обхода сайтов РФ/СНГ: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 &&
         _selectedAccountIndex < _fetchedAccounts.length) {
@@ -1220,13 +1245,16 @@ class _HomePageState extends State<HomePage> {
         if (engine != ActiveEngine.none) {
           bool aetherAlive = false;
           bool torAlive = false;
-          try {
-            aetherAlive =
-                await _aetherChannel.invokeMethod('isAetherRunning') ?? false;
-          } catch (_) {}
-          try {
-            torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false;
-          } catch (_) {}
+          try { 
+            aetherAlive = await _aetherChannel.invokeMethod('isAetherRunning') ?? false; 
+          } catch (e) {
+            AppLogger.log("AETHER", "Ошибка проверки состояния Aether: $e", isError: true);
+          }
+          try { 
+            torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false; 
+          } catch (e) {
+            AppLogger.log("TOR", "Ошибка проверки состояния Tor: $e", isError: true);
+          }
 
           if (engine == ActiveEngine.aether && aetherAlive) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.aether);
@@ -1283,7 +1311,9 @@ class _HomePageState extends State<HomePage> {
           }
           await _torChannel.invokeMethod('clearNativeLogs');
         }
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("TOR", "Ошибка получения логов Tor: $e", isError: true);
+      }
     });
 
     _reportTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
@@ -1311,19 +1341,29 @@ class _HomePageState extends State<HomePage> {
     _torProgressTimer?.cancel();
     try {
       await flutterV2ray.stopV2Ray();
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping V2Ray: $e", isError: true);
+    }
     try {
       await _torChannel.invokeMethod('killAllCores');
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping Tor cores: $e", isError: true);
+    }
     try {
       await _aetherChannel.invokeMethod('stopAether');
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ENGINE", "Error stopping Aether: $e", isError: true);
+    }
     await _saveEngineState(ActiveEngine.none);
     await Future.delayed(const Duration(milliseconds: 300));
   }
 
-  Future<Map<String, dynamic>?> _verifyDnsIp(String ip,
-      {int timeoutMs = 1500}) async {
+  Future<Map<String, dynamic>?> _verifyDnsIp(String ip, {int timeoutMs = 1500, int port = 53}) async {
+    return verifyDnsIp(ip, timeoutMs: timeoutMs, port: port);
+  }
+
+  @visibleForTesting
+  static Future<Map<String, dynamic>?> verifyDnsIp(String ip, {int timeoutMs = 1500, int port = 53}) async {
     RawDatagramSocket? socket;
     try {
       final InternetAddress targetAddress = InternetAddress(ip.trim());
@@ -1361,7 +1401,7 @@ class _HomePageState extends State<HomePage> {
       ];
 
       final stopwatch = Stopwatch()..start();
-      socket.send(dnsQuery, targetAddress, 53);
+      socket.send(dnsQuery, targetAddress, port);
 
       final completer = Completer<Map<String, dynamic>?>();
       socket.listen((RawSocketEvent event) {
@@ -1623,11 +1663,11 @@ class _HomePageState extends State<HomePage> {
           .then((latency) => MapEntry(ip, latency ?? 9999));
     }).toList();
 
-    final List<MapEntry<String, int>> fastResults =
-        await Future.wait(fastTasks);
-    for (var result in fastResults) {
-      if (result.value < bestLatency && result.value < 1500) {
-        bestLatency = result.value;
+    final List<MapEntry<String, int>> fastResults = await Future.wait(fastTasks);
+    for (final result in fastResults) {
+      final latency = result.value;
+      if (latency < bestLatency && latency < 1500) {
+        bestLatency = latency;
         bestIP = result.key;
       }
     }
@@ -2127,7 +2167,9 @@ class _HomePageState extends State<HomePage> {
               }
             }
           }
-        } catch (_) {}
+        } catch (e) {
+          AppLogger.log("TOR", "Ошибка получения статуса Tor: $e", isError: true);
+        }
       });
 
       for (int i = 0; i < 180; i++) {
@@ -2467,6 +2509,14 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+
+  @visibleForTesting
+  void parseAndSaveConfig(String link, {bool updateUI = true}) {
+    _parseAndSaveConfig(link, updateUI: updateUI);
+  }
+
+  @visibleForTesting
+  String get fullConfigJson => _fullConfigJson;
 
   void _parseAndSaveConfig(String link, {bool updateUI = true}) {
     if (link.isEmpty) return;
@@ -3015,15 +3065,11 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _checkAndAutoSwitchLimit(
-      Map<String, String> currentAccount, int totalBytesSession) async {
-    final int previouslyUsedDatabase =
-        int.tryParse(currentAccount['used_bytes'] ?? '0') ?? 0;
-    final int currentRealtimeDailyUsage =
-        previouslyUsedDatabase + totalBytesSession;
+  @visibleForTesting
+  void checkAndAutoSwitchLimit(Map<String, String> currentAccount, int totalBytesSession) async {
     final String activeWorker = currentAccount['worker'] ?? '';
 
-    if (currentRealtimeDailyUsage >= _maxDailyBytes) {
+    if (DataLimitChecker.isLimitExhausted(currentAccount, totalBytesSession, maxDailyBytes: _maxDailyBytes)) {
       _locallyExhaustedWorkers.add(activeWorker);
       await _saveExhaustedWorkers();
       _showSnackBar(_t("limit_exhausted_banner"));
@@ -3038,6 +3084,10 @@ class _HomePageState extends State<HomePage> {
         _connectDashboard();
       }
     }
+  }
+
+  void _checkAndAutoSwitchLimit(Map<String, String> currentAccount, int totalBytesSession) {
+    checkAndAutoSwitchLimit(currentAccount, totalBytesSession);
   }
 
   Future<void> _loadExhaustedWorkers() async {
@@ -8422,6 +8472,15 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   }
 }
 
+int compareServerPing(Map<String, dynamic> a, Map<String, dynamic> b) {
+  final pA = a['ping'] as int? ?? 0;
+  final pB = b['ping'] as int? ?? 0;
+  if (pA <= 0 && pB <= 0) return 0;
+  if (pA <= 0) return 1;
+  if (pB <= 0) return -1;
+  return pA.compareTo(pB);
+}
+
 // =========================================================================
 // صفحه مدیریت سرورها و سابسکریپشن (Servers & Subscription Management)
 // =========================================================================
@@ -8436,7 +8495,214 @@ class ServersManagementScreen extends StatefulWidget {
   });
 
   @visibleForTesting
-  static Map<String, dynamic> parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
+  static String buildVlessLink(Map<String, dynamic> s) {
+    final uuid = s['uuid'] ?? '';
+    final address = s['address'] ?? '';
+    final port = s['port'] ?? 443;
+    final security = s['security'] ?? 'tls';
+    final sni = s['sni'] ?? address;
+    final fp = s['fingerprint'] ?? 'chrome';
+    final alpn = Uri.encodeComponent(s['alpn'] ?? 'http/1.1');
+    final transport = s['transport'] ?? 'ws';
+    final wsHost = s['wsHost'] ?? address;
+    final wsPath = Uri.encodeComponent(s['wsPath'] ?? '/');
+    final name = Uri.encodeComponent(s['name'] ?? 'RedCloud_Server');
+    return "vless://$uuid@$address:$port?encryption=none&security=$security&sni=$sni&fp=$fp&alpn=$alpn&type=$transport&host=$wsHost&path=$wsPath#$name";
+  }
+
+  @override
+  State<ServersManagementScreen> createState() => _ServersManagementScreenState();
+}
+
+class _ServersManagementScreenState extends State<ServersManagementScreen> {
+  String _l(String fa, String ru, String en) {
+    if (widget.currentLang == "fa") return fa;
+    if (widget.currentLang == "ru") return ru;
+    return en;
+  }
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+  int _selectedFilterTab = 0; // 0: All, 1: Subscriptions, 2: Manual & Custom
+
+  List<Map<String, dynamic>> _servers = [];
+  List<String> _subscriptionUrls = [];
+  int _activeServerIndex = 0;
+  bool _isTestingPing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadServersData();
+  }
+
+  Future<void> _loadServersData() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? savedJson = prefs.getString('saved_custom_servers_list_v2');
+    final List<String>? savedSubs = prefs.getStringList('saved_subscription_urls_v2');
+
+    List<Map<String, dynamic>> list = [];
+
+    if (savedJson != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(savedJson);
+        list = decoded.cast<Map<String, dynamic>>().toList();
+      } catch (_) {}
+    }
+
+    // اگر لیست خالی بود، از سرورهای اولیه برنامه پر شود
+    if (list.isEmpty) {
+      for (int i = 0; i < widget.currentServers.length; i++) {
+        final acc = widget.currentServers[i];
+        final worker = acc['worker'] ?? 'round-sea-8418.redcloudir.workers.dev';
+        final uuid = acc['uuid'] ?? '';
+        final path = acc['path'] ?? '/';
+        list.add({
+          "id": "builtin_$i",
+          "name": "Server ${i + 1}",
+          "protocol": "VLESS",
+          "address": worker,
+          "port": 443,
+          "uuid": uuid,
+          "transport": "ws",
+          "wsHost": worker,
+          "wsPath": path,
+          "security": "tls",
+          "sni": worker,
+          "fingerprint": "chrome",
+          "alpn": "http/1.1",
+          "allowInsecure": false,
+          "ech": "",
+          "ping": 0,
+          "isSubscription": false,
+          "subUrl": "",
+          "rawLink": "vless://$uuid@$worker:443?encryption=none&security=tls&sni=$worker&fp=chrome&alpn=http%2F1.1&type=ws&host=$worker&path=${Uri.encodeComponent(path)}#Server_${i + 1}",
+        });
+      }
+    }
+
+    setState(() {
+      _servers = list;
+      _subscriptionUrls = savedSubs ?? [];
+    });
+  }
+
+  Future<void> _saveServersData() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saved_custom_servers_list_v2', jsonEncode(_servers));
+    await prefs.setStringList('saved_subscription_urls_v2', _subscriptionUrls);
+  }
+
+  String _buildVlessLink(Map<String, dynamic> s) => ServersManagementScreen.buildVlessLink(s);
+
+  Future<int> _pingAddress(String address, int port) async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      final socket = await Socket.connect(address, port, timeout: const Duration(milliseconds: 1800));
+      stopwatch.stop();
+      socket.destroy();
+      return stopwatch.elapsedMilliseconds;
+    } catch (_) {
+      return -1; // تایم اوت یا فیلتر
+    }
+  }
+
+  Future<void> _testSinglePing(int index) async {
+    final s = _servers[index];
+    setState(() => s['ping'] = -2); // در حال تست
+    final ms = await _pingAddress(s['address'] ?? '1.1.1.1', s['port'] ?? 443);
+    setState(() => s['ping'] = ms);
+    _saveServersData();
+  }
+
+  Future<void> _testAllPingsAndSort() async {
+    setState(() => _isTestingPing = true);
+    for (int i = 0; i < _servers.length; i++) {
+      _servers[i]['ping'] = -2;
+    }
+    setState(() {});
+
+    final tasks = _servers.map((s) async {
+      final ms = await _pingAddress(s['address'] ?? '1.1.1.1', s['port'] ?? 443);
+      s['ping'] = ms;
+    }).toList();
+
+    await Future.wait(tasks);
+
+    // مرتب‌سازی: کمترین پینگ در بالا، پینگ‌های منفی در انتها
+    _servers.sort(compareServerPing);
+
+    setState(() => _isTestingPing = false);
+    _saveServersData();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_l("تست پینگ به پایان رسید و سرورها مرتب شدند.", "Проверка пинга завершена, серверы отсортированы.", "Ping test completed, servers sorted.")), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  void _openEditModal({Map<String, dynamic>? server, int? index}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0E1424),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => EditServerModal(
+        server: server,
+        onSave: (updated) {
+          setState(() {
+            updated['rawLink'] = _buildVlessLink(updated);
+            if (index != null && index >= 0) {
+              _servers[index] = updated;
+            } else {
+              _servers.add(updated);
+            }
+          });
+          _saveServersData();
+        },
+      ),
+    );
+  }
+
+  void _addNewSubscriptionDialog() {
+    final subController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF101726),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFF00F2FE))),
+        title: Row(
+          children: [
+            Icon(Icons.add_link_rounded, color: Color(0xFF00F2FE)),
+            SizedBox(width: 8),
+            Text("Add New Subscription", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: TextField(
+          controller: subController,
+          style: const TextStyle(fontSize: 12),
+          decoration: const InputDecoration(
+            hintText: "https://.../sub (Marzban, 3X-UI...)",
+            hintStyle: TextStyle(color: Colors.grey, fontSize: 11),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_l("انصراف", "Отмена", "Cancel"), style: const TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            onPressed: () async {
+              final url = subController.text.trim();
+              if (url.isNotEmpty) {
+                Navigator.pop(ctx);
+                _fetchSubscription(url);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00F2FE), foregroundColor: Colors.black),
+            child: Text(_l("افزودن و بروزرسانی", "Добавить и обновить", "Add & Update")),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _parseV2RayShareLink(String rawLink, {String defaultName = "Server"}) {
     final link = rawLink.trim();
     String name = defaultName;
     String protocol = "VLESS";
