@@ -702,10 +702,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _countryCodeToEmoji(String countryCode) {
-    if (countryCode.length != 2) return "🌐";
-    final int firstLetter = countryCode.toUpperCase().codeUnitAt(0) - 0x41 + 0x1F1E6;
-    final int secondLetter = countryCode.toUpperCase().codeUnitAt(1) - 0x41 + 0x1F1E6;
-    return String.fromCharCode(firstLetter) + String.fromCharCode(secondLetter);
+    return HomePage.countryCodeToEmoji(countryCode);
   }
 
   void _startHeartbeat() {
@@ -723,7 +720,9 @@ class _HomePageState extends State<HomePage> {
 
         final socket = await Socket.connect('127.0.0.1', targetPort, timeout: const Duration(seconds: 2));
         socket.destroy();
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.log("HEARTBEAT-ERR", "Heartbeat check error: $e");
+      }
     });
   }
 
