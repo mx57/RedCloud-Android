@@ -144,7 +144,9 @@ class _MyAppState extends State<MyApp> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('saved_dark_mode', _isDarkMode);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SETTINGS", "Error saving theme preference: $e", isError: true);
+    }
   }
 
   void _changeLang(String lang) async {
@@ -155,7 +157,9 @@ class _MyAppState extends State<MyApp> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SETTINGS", "Error saving language preference: $e", isError: true);
+    }
   }
 
   @override
@@ -295,7 +299,9 @@ class _HomePageState extends State<HomePage> {
           _atcRemainingDays = (info['remainingDays'] as num?)?.toInt() ?? 30;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("AETHER", "Error fetching ATC account info: $e", isError: true);
+    }
   }
   String _torStepStatus = "";
   int _torCurrentStep = 0;
@@ -999,7 +1005,9 @@ class _HomePageState extends State<HomePage> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('active_engine_state', engine.name);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("STATE", "Error saving engine state: $e", isError: true);
+    }
   }
 
   bool _webrtcShield = true;
@@ -1023,7 +1031,9 @@ class _HomePageState extends State<HomePage> {
           if (allPkgs != null) _allInstalledPackages = allPkgs;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SPLIT-TUNNEL", "Error loading split tunnel settings: $e", isError: true);
+    }
   }
 
   List<String> _getEffectiveBlockedApps() {
@@ -1056,7 +1066,9 @@ class _HomePageState extends State<HomePage> {
           if (savedShield != null) _webrtcShield = savedShield;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SETTINGS", "Error loading routing/bypass settings: $e", isError: true);
+    }
   }
 
   Future<void> _setWebRtcShieldSetting(bool value) async {
@@ -1067,7 +1079,9 @@ class _HomePageState extends State<HomePage> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SHIELD", "Error saving WebRTC shield setting: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
@@ -1082,7 +1096,9 @@ class _HomePageState extends State<HomePage> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("HYBRID", "Error saving hybrid mode setting: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
@@ -1097,7 +1113,9 @@ class _HomePageState extends State<HomePage> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ROUTING", "Error saving bypass setting: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
@@ -6941,7 +6959,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
           });
         }
       }
-    } catch (_) {
+    } catch (e) {
+      AppLogger.log("SPLIT-TUNNEL", "Error fetching installed applications: $e", isError: true);
       if (mounted) setState(() => _isLoading = false);
     }
   }
