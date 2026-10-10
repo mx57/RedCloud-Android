@@ -144,7 +144,9 @@ class _MyAppState extends State<MyApp> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('saved_dark_mode', _isDarkMode);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("THEME", "Failed to save theme setting: $e", isError: true);
+    }
   }
 
   void _changeLang(String lang) async {
@@ -155,7 +157,9 @@ class _MyAppState extends State<MyApp> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("LANG", "Failed to save language setting: $e", isError: true);
+    }
   }
 
   @override
@@ -999,7 +1003,9 @@ class _HomePageState extends State<HomePage> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString('active_engine_state', engine.name);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("STATE", "Failed to save engine state: $e", isError: true);
+    }
   }
 
   bool _webrtcShield = true;
@@ -1023,7 +1029,9 @@ class _HomePageState extends State<HomePage> {
           if (allPkgs != null) _allInstalledPackages = allPkgs;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SETTINGS", "Failed to load split tunnel settings: $e", isError: true);
+    }
   }
 
   List<String> _getEffectiveBlockedApps() {
@@ -1056,7 +1064,9 @@ class _HomePageState extends State<HomePage> {
           if (savedShield != null) _webrtcShield = savedShield;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SETTINGS", "Failed to load bypass Iran setting: $e", isError: true);
+    }
   }
 
   Future<void> _setWebRtcShieldSetting(bool value) async {
@@ -1067,7 +1077,9 @@ class _HomePageState extends State<HomePage> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SHIELD", "Failed to save WebRTC shield setting: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
@@ -1082,7 +1094,9 @@ class _HomePageState extends State<HomePage> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("HYBRID", "Failed to save hybrid mode setting: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
@@ -1097,7 +1111,9 @@ class _HomePageState extends State<HomePage> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("ROUTING", "Failed to save bypass Iran setting: $e", isError: true);
+    }
 
     if (_selectedAccountIndex >= 0 && _selectedAccountIndex < _fetchedAccounts.length) {
       _updateSelectedConfig();
