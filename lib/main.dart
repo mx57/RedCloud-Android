@@ -1119,10 +1119,14 @@ class _HomePageState extends State<HomePage> {
           bool torAlive = false;
           try { 
             aetherAlive = await _aetherChannel.invokeMethod('isAetherRunning') ?? false; 
-          } catch (_) {}
+          } catch (e) {
+            AppLogger.log("STATE", "Ошибка проверки состояния Aether: $e", isError: true);
+          }
           try { 
             torAlive = await _torChannel.invokeMethod('isTorRunning') ?? false; 
-          } catch (_) {}
+          } catch (e) {
+            AppLogger.log("STATE", "Ошибка проверки состояния Tor: $e", isError: true);
+          }
 
           if (engine == ActiveEngine.aether && aetherAlive) {
             if (mounted) setState(() => _activeEngine = ActiveEngine.aether);
