@@ -907,6 +907,100 @@ class HomePageState extends State<HomePage> {
     _heartbeatTimer = null;
   }
 
+  Future<Map<String, dynamic>?> _querySocks5Json(
+      int socksPort, String targetHost, String path,
+      {int timeoutMs = 4500}) async {
+    final stopwatch = Stopwatch()..start();
+    Socket? socket;
+    try {
+      socket = await Socket.connect('127.0.0.1', socksPort,
+          timeout: Duration(milliseconds: timeoutMs));
+
+      socket.add([0x05, 0x01, 0x00]);
+      await socket.flush();
+
+      final completer = Completer<Map<String, dynamic>?>();
+      final List<int> buffer = [];
+      int stage = 0;
+
+      socket.listen((data) {
+        buffer.addAll(data);
+
+        if (stage == 0) {
+          if (buffer.length >= 2) {
+            if (buffer[0] == 0x05 && buffer[1] == 0x00) {
+              buffer.clear();
+              stage = 1;
+              final hostBytes = utf8.encode(targetHost);
+              final connectReq = [
+                0x05,
+                0x01,
+                0x00,
+                0x03,
+                hostBytes.length,
+                ...hostBytes,
+                0x00,
+                0x50
+              ];
+              socket?.add(connectReq);
+              socket?.flush();
+            } else {
+              if (!completer.isCompleted) completer.complete(null);
+            }
+          }
+        } else if (stage == 1) {
+          if (buffer.length >= 10) {
+            if (buffer[0] == 0x05 && buffer[1] == 0x00) {
+              buffer.clear();
+              stage = 2;
+              final httpRequest = "GET $path HTTP/1.1\r\n"
+                  "Host: $targetHost\r\n"
+                  "User-Agent: Mozilla/5.0 (Android; Linux)\r\n"
+                  "Connection: close\r\n\r\n";
+              socket?.add(utf8.encode(httpRequest));
+              socket?.flush();
+            } else {
+              if (!completer.isCompleted) completer.complete(null);
+            }
+          }
+        } else if (stage == 2) {
+          final responseText = utf8.decode(buffer, allowMalformed: true);
+          if (responseText.contains("\r\n\r\n")) {
+            final parts = responseText.split("\r\n\r\n");
+            if (parts.length > 1) {
+              final jsonPart = parts.sublist(1).join("\r\n\r\n").trim();
+              try {
+                final Map<String, dynamic> parsed = jsonDecode(jsonPart);
+                stopwatch.stop();
+                parsed['pingMs'] = stopwatch.elapsedMilliseconds;
+                if (!completer.isCompleted) completer.complete(parsed);
+                return;
+              } catch (e) {
+                AppLogger.log("TELEMETRY", "Failed to parse SOCKS5 JSON response: $e", isError: true);
+              }
+            }
+          }
+        }
+      }, onError: (_) {
+        if (!completer.isCompleted) completer.complete(null);
+      }, onDone: () {
+        if (!completer.isCompleted) completer.complete(null);
+      });
+
+      Timer(Duration(milliseconds: timeoutMs), () {
+        if (!completer.isCompleted) completer.complete(null);
+      });
+
+      return await completer.future;
+    } catch (_) {
+      return null;
+    } finally {
+      try {
+        socket?.destroy();
+      } catch (_) {}
+    }
+  }
+
   Future<void> _fetchPublicIpAndPing() async {
     if (_activeEngine == ActiveEngine.none) return;
 
