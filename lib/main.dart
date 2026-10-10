@@ -180,7 +180,7 @@ class _MyAppState extends State<MyApp> {
       final prefs = AppPreferences.instance;
       await prefs.setBool('saved_dark_mode', _isDarkMode);
     } catch (e) {
-      AppLogger.log("THEME", "Ошибка сохранения темы: $e", isError: true);
+      AppLogger.log("THEME", "Failed to save theme setting: $e", isError: true);
     }
   }
 
@@ -193,7 +193,7 @@ class _MyAppState extends State<MyApp> {
       await prefs.setString('saved_app_language', lang);
       await prefs.setBool('first_launch_lang_selected', true);
     } catch (e) {
-      AppLogger.log("LANG", "Ошибка сохранения языка: $e", isError: true);
+      AppLogger.log("LANG", "Failed to save language setting: $e", isError: true);
     }
   }
 
@@ -1115,7 +1115,9 @@ class HomePageState extends State<HomePage> {
     try {
       final prefs = AppPreferences.instance;
       await prefs.setString('active_engine_state', engine.name);
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("STATE", "Failed to save engine state: $e", isError: true);
+    }
   }
 
   bool _webrtcShield = true;
@@ -1141,7 +1143,9 @@ class HomePageState extends State<HomePage> {
           if (allPkgs != null) _allInstalledPackages = allPkgs;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.log("SETTINGS", "Failed to load split tunnel settings: $e", isError: true);
+    }
   }
 
   List<String> _getEffectiveBlockedApps() {
@@ -1176,7 +1180,7 @@ class HomePageState extends State<HomePage> {
         });
       }
     } catch (e) {
-      AppLogger.log("ROUTING-ERR", "Ошибка загрузки настроек маршрутизации: $e", isError: true);
+      AppLogger.log("SETTINGS", "Failed to load bypass Iran setting: $e", isError: true);
     }
   }
 
@@ -1189,7 +1193,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('webrtc_shield_traffic', value);
       AppLogger.log("SHIELD", "Статус защиты WebRTC: $value");
     } catch (e) {
-      AppLogger.log("SHIELD-ERR", "Ошибка сохранения защиты WebRTC: $e", isError: true);
+      AppLogger.log("SHIELD", "Failed to save WebRTC shield setting: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
@@ -1207,7 +1211,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('hybrid_mode_traffic', value);
       AppLogger.log("HYBRID", "Статус гибридного режима: $value");
     } catch (e) {
-      AppLogger.log("HYBRID-ERR", "Ошибка сохранения гибридного режима: $e", isError: true);
+      AppLogger.log("HYBRID", "Failed to save hybrid mode setting: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
@@ -1225,7 +1229,7 @@ class HomePageState extends State<HomePage> {
       await prefs.setBool('bypass_iran_traffic', value);
       AppLogger.log("ROUTING", "Статус прямого обхода сайтов РФ/СНГ: $value");
     } catch (e) {
-      AppLogger.log("ROUTING-ERR", "Ошибка сохранения обхода сайтов: $e", isError: true);
+      AppLogger.log("ROUTING", "Failed to save bypass Iran setting: $e", isError: true);
     }
 
     if (_selectedAccountIndex >= 0 &&
