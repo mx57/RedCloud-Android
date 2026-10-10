@@ -1448,9 +1448,10 @@ class _HomePageState extends State<HomePage> {
     }).toList();
 
     final List<MapEntry<String, int>> fastResults = await Future.wait(fastTasks);
-    for (var result in fastResults) {
-      if (result.value < bestLatency && result.value < 1500) {
-        bestLatency = result.value;
+    for (final result in fastResults) {
+      final latency = result.value;
+      if (latency < bestLatency && latency < 1500) {
+        bestLatency = latency;
         bestIP = result.key;
       }
     }
