@@ -903,7 +903,9 @@ class HomePageState extends State<HomePage> {
                 parsed['pingMs'] = stopwatch.elapsedMilliseconds;
                 if (!completer.isCompleted) completer.complete(parsed);
                 return;
-              } catch (_) {}
+              } catch (e) {
+                AppLogger.log("TELEMETRY", "Failed to parse JSON response: $e", isError: true);
+              }
             }
           }
         }
