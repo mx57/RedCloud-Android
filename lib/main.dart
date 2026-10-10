@@ -1180,7 +1180,7 @@ class HomePageState extends State<HomePage> {
         });
       }
     } catch (e) {
-      AppLogger.log("SETTINGS", "Failed to load bypass Iran setting: $e", isError: true);
+      AppLogger.log("SETTINGS", "Failed to load bypass/hybrid settings: $e", isError: true);
     }
   }
 
